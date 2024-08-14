@@ -1,0 +1,225 @@
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2ecc71;
+    --background-color: #f5f6fa;
+    --text-color: #34495e;
+    --input-bg-color: #ffffff;
+    --button-hover-color: #2980b9;
+    --error-color: #e74c3c;
+    --success-color: #27ae60;
+    --border-color: #bdc3c7;
+    --console-bg: white;
+    --item-tree-bg: white;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #3498db;
+        --secondary-color: #2ecc71;
+        --background-color: #1a1a1a;
+        --text-color: #ecf0f1;
+        --input-bg-color: #2c3e50;
+        --button-hover-color: #2980b9;
+        --error-color: #e74c3c;
+        --success-color: #27ae60;
+        --border-color: #34495e;
+        --console-bg: #2c3e50;
+        --item-tree-bg: #2c3e50;
+    }
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.login-container {
+    background-color: var(--input-bg-color);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    width: 300px;
+    margin: 10% auto;
+}
+
+h1 {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+}
+
+input[type="email"],
+input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+input::placeholder {
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: var(--button-hover-color);
+}
+
+#message {
+    margin-top: 1rem;
+    text-align: center;
+    font-weight: bold;
+}
+
+.error {
+    color: var(--error-color);
+}
+
+.success {
+    color: var(--success-color);
+}
+
+#totp-form {
+    display: none;
+}
+
+/* Styles pour la page principale */
+.header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.container {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+#item-tree {
+    flex-grow: 1;
+    overflow-y: auto;
+    background-color: var(--item-tree-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.tree-item {
+    margin-bottom: 0.25rem;
+    padding: 0.25rem;
+}
+
+.tree-item ul {
+    margin-left: 1.25rem;
+}
+
+.folder {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.file {
+    color: var(--text-color);
+}
+
+.remove-btn {
+    margin-left: 5px;
+    cursor: pointer;
+    color: var(--error-color);
+    transition: color 0.2s ease;
+}
+
+.remove-btn:hover {
+    color: var(--button-hover-color);
+}
+
+.expander {
+    cursor: pointer;
+    user-select: none;
+    margin-right: 3px;
+    transition: transform 0.2s ease;
+}
+
+.expander.expanded {
+    transform: rotate(90deg);
+}
+
+#console-wrapper {
+    background-color: var(--console-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 0.8rem;
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    margin-top: 0.5rem;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#console-header {
+    padding: 0.25rem 0.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+}
+
+#console {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.console-entry {
+    margin-bottom: 0.25rem;
+}
+
+.console-entry.add { color: var(--success-color); }
+.console-entry.change { color: #f39c12; }
+.console-entry.delete { color: var(--error-color); }
+.console-entry.info { color: var(--primary-color); }
+
+@media (max-width: 600px) {
+    .login-container {
+        width: 90%;
+        padding: 1rem;
+    }
+
+    .container {
+        padding: 0.5rem;
+    }
+}

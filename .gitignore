@@ -1,0 +1,75 @@
+# Dépendances
+node_modules/
+package-lock.json
+
+# Fichiers de build
+dist/
+build/
+
+# Fichiers de logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fichiers d'environnement
+.env
+.env.local
+.env.*.local
+
+# Fichiers de configuration d'éditeur
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de cache
+.npm
+.eslintcache
+
+# Fichiers de couverture de test
+coverage/
+
+# Fichiers temporaires
+tmp/
+temp/
+
+# Fichiers de build Electron
+out/
+
+# Fichiers spécifiques à Electron-builder
+electron-builder.yml
+electron-builder-*.yml
+
+# Fichiers de configuration spécifiques à l'utilisateur
+.npmrc
+.yarnrc
+
+# Fichiers de sauvegarde
+*.bak
+*.backup
+
+# Fichiers de session de débogage VS Code
+.vscode-test/
+
+# Fichiers de build macOS
+.AppleDouble
+.LSOverride
+
+# Fichiers de build Windows
+*.exe
+*.msi
+
+# Fichiers de certificats et clés (si applicable)
+*.pem
+*.key
+*.crt
+
+# Fichiers spécifiques à votre application (à adapter selon vos besoins)
+# config.json
+# userdata/

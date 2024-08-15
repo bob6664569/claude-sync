@@ -22,6 +22,7 @@
     "axios": "1.7.4",
     "axios-cookiejar-support": "5.0.2",
     "chokidar": "3.6.0",
+    "debug": "4.3.6",
     "electron-store": "10.0.0",
     "tough-cookie": "4.1.4",
     "uuid": "10.0.0"

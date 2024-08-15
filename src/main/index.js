@@ -5,15 +5,20 @@ const { createMainWindow, createLoginWindow, createProjectSelectionWindow } = re
 const ClaudeAPIClient = require('./api-client');
 const { createMenu } = require('./menu');
 
+let ipcHandlersSetup = false;
 let apiClient;
 
 async function initApp() {
     try {
         await initStore();
         apiClient = new ClaudeAPIClient();
-        setupIpcHandlers(apiClient);
 
-        createMenu(); // Add this line to create the menu
+        if (!ipcHandlersSetup) {
+            setupIpcHandlers(apiClient);
+            ipcHandlersSetup = true;
+        }
+
+        createMenu();
 
         await checkAndHandleSession();
     } catch (error) {

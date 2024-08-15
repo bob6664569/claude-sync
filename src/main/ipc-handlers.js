@@ -7,6 +7,8 @@ const { getStore, getCurrentProjectId, setCurrentProjectId, getSyncItemsForProje
 const { createMainWindow, createProjectSelectionWindow, closeLoginWindow, getMainWindow } = require('./windows');
 const { shouldIgnore, getDirectoryContents, mergeItems } = require('../utils/file-utils');
 
+let handlersSetup = false;
+
 class IpcHandlerManager {
     constructor(apiClient) {
         this.apiClient = apiClient;
@@ -67,6 +69,9 @@ class IpcHandlerManager {
             if (mainWindow) {
                 console.log('Sending project-changed event to main window');
                 mainWindow.webContents.send('project-changed', projectId);
+            } else {
+                console.log('Main window not found, creating new main window');
+                await createMainWindow();
             }
 
             const projectSelectionWindow = BrowserWindow.fromWebContents(event.sender);
@@ -79,56 +84,60 @@ class IpcHandlerManager {
     }
 
     setupLoginHandlers() {
-        ipcMain.handle('request-totp', async (_, email) => {
-            try {
-                const result = await this.apiClient.sendMagicLink(email);
-                if (result.sent) {
-                    this.loginState.email = email;
-                    this.loginState.totpSent = true;
-                    return { success: true, message: 'TOTP sent to your email address' };
-                } else {
-                    return { success: false, message: 'Failed to send TOTP' };
-                }
-            } catch (error) {
-                console.error('Error requesting TOTP:', error);
-                return { success: false, message: 'Error while requesting TOTP' };
-            }
-        });
-
-        ipcMain.handle('verify-totp', async (_, totp) => {
-            try {
-                if (!this.loginState.totpSent) {
-                    return { success: false, message: 'Please request a magic link first' };
-                }
-
-                const result = await this.apiClient.verifyMagicLink(this.loginState.email, totp);
-                console.log('Magic link verification result:', result);
-
-                if (!result) {
-                    return { success: false, message: 'No response from server' };
-                }
-
-                if (result.success) {
-                    const organizationUUID = result.account?.memberships?.[0]?.organization?.uuid;
-                    if (!organizationUUID || !uuidValidate(organizationUUID)) {
-                        console.error('Invalid or missing organization UUID in the response');
-                        this.handleLogout();
-                        return { success: false, message: 'Invalid organization UUID' };
+        if (!ipcMain.listenerCount('request-totp')) {
+            ipcMain.handle('request-totp', async (_, email) => {
+                try {
+                    const result = await this.apiClient.sendMagicLink(email);
+                    if (result.sent) {
+                        this.loginState.email = email;
+                        this.loginState.totpSent = true;
+                        return {success: true, message: 'TOTP sent to your email address'};
+                    } else {
+                        return {success: false, message: 'Failed to send TOTP'};
                     }
-                    const sessionKey = this.apiClient.getSessionKey();
-                    this.storeSession(sessionKey, organizationUUID);
-                    await createMainWindow();
-                    closeLoginWindow();
-                    this.resetLoginState();
-                    return { success: true };
-                } else {
-                    return { success: false, message: result.error || 'Invalid code' };
+                } catch (error) {
+                    console.error('Error requesting TOTP:', error);
+                    return {success: false, message: 'Error while requesting TOTP'};
                 }
-            } catch (error) {
-                console.error('Error verifying magic link:', error);
-                return { success: false, message: 'Error while verifying the magic link' };
-            }
-        });
+            });
+        }
+
+        if (!ipcMain.listenerCount('verify-totp')) {
+            ipcMain.handle('verify-totp', async (_, totp) => {
+                try {
+                    if (!this.loginState.totpSent) {
+                        return {success: false, message: 'Please request a magic link first'};
+                    }
+
+                    const result = await this.apiClient.verifyMagicLink(this.loginState.email, totp);
+                    console.log('Magic link verification result:', result);
+
+                    if (!result) {
+                        return {success: false, message: 'No response from server'};
+                    }
+
+                    if (result.success) {
+                        const organizationUUID = result.account?.memberships?.[0]?.organization?.uuid;
+                        if (!organizationUUID || !uuidValidate(organizationUUID)) {
+                            console.error('Invalid or missing organization UUID in the response');
+                            this.handleLogout();
+                            return {success: false, message: 'Invalid organization UUID'};
+                        }
+                        const sessionKey = this.apiClient.getSessionKey();
+                        this.storeSession(sessionKey, organizationUUID);
+                        await createMainWindow();
+                        closeLoginWindow();
+                        this.resetLoginState();
+                        return {success: true};
+                    } else {
+                        return {success: false, message: result.error || 'Invalid code'};
+                    }
+                } catch (error) {
+                    console.error('Error verifying magic link:', error);
+                    return {success: false, message: 'Error while verifying the magic link'};
+                }
+            });
+        }
 
         ipcMain.handle('check-session', async () => {
             return await this.verifySession();
@@ -188,12 +197,12 @@ class IpcHandlerManager {
 
     setupSyncHandlers() {
         ipcMain.on('start-sync', (_, items) => {
-            console.log('Starting sync for items:', items);
+            console.log('Received start-sync event with items:', items);
             this.startFileWatcher(items);
         });
 
         ipcMain.on('stop-sync', () => {
-            console.log('Stopping sync');
+            console.log('Received stop-sync event');
             this.stopFileWatcher();
         });
     }
@@ -284,6 +293,7 @@ class IpcHandlerManager {
     }
 
     startFileWatcher(items) {
+        console.log('Starting file watcher for items:', items);
         if (this.watcher) {
             this.watcher.close();
         }
@@ -318,7 +328,12 @@ class IpcHandlerManager {
 
     handleFileEvent(eventType, path) {
         console.log(`File ${path} has been ${eventType}ed`);
-        getMainWindow().webContents.send('file-change', { type: eventType, path });
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+            mainWindow.webContents.send('file-change', { type: eventType, path });
+        } else {
+            console.log('Main window not found, unable to send file-change event');
+        }
     }
 
     handleWatcherError(error) {
@@ -332,9 +347,16 @@ class IpcHandlerManager {
     }
 }
 
+
 function setupIpcHandlers(apiClient) {
+    if (handlersSetup) {
+        console.log('IPC handlers already set up. Skipping...');
+        return;
+    }
+
     const handlerManager = new IpcHandlerManager(apiClient);
     handlerManager.setupHandlers();
+    handlersSetup = true;
     return handlerManager;
 }
 

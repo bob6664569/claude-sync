@@ -39,12 +39,12 @@ async function createMainWindow() {
             }
         });
 
-        mainWindow.loadFile(path.join(__dirname, '../renderer/main.html'));
+        await mainWindow.loadFile(path.join(__dirname, '../renderer/main.html'));
 
         mainWindow.webContents.on('did-finish-load', () => {
-            const initialState = getStore().get('syncItems', []);
-            console.log('Sending initial state:', initialState);
-            mainWindow.webContents.send('initial-state', initialState);
+            const currentProjectId = getCurrentProjectId();
+            console.log('Main window loaded, current project ID:', currentProjectId);
+            mainWindow.webContents.send('project-changed', currentProjectId);
         });
 
         mainWindow.on('closed', () => {
@@ -53,6 +53,7 @@ async function createMainWindow() {
     } else {
         mainWindow.focus();
     }
+    return mainWindow;
 }
 
 function closeLoginWindow() {

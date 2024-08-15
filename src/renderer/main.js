@@ -1,6 +1,5 @@
-// src/renderer/main.js
-
 const { ipcRenderer } = require('electron');
+const { main: debug } = require('../utils/logger');
 
 class SyncApp {
     constructor() {
@@ -15,6 +14,24 @@ class SyncApp {
         };
 
         this.initializeApp();
+        this.setupIpcListeners();
+    }
+
+    setupIpcListeners() {
+        ipcRenderer.on('file-change', (_, data) => {
+            console.log('Received file-change event:', data);
+            this.addConsoleEntry(data.type, `${data.type.charAt(0).toUpperCase() + data.type.slice(1)}: ${data.path}`);
+        });
+
+        ipcRenderer.on('watcher-ready', () => {
+            console.log('Received watcher-ready event');
+            this.addConsoleEntry('info', 'File watcher is ready');
+        });
+
+        ipcRenderer.on('sync-error', (_, error) => {
+            console.error('Received sync-error event:', error);
+            this.addConsoleEntry('error', `Sync error: ${error}`);
+        });
     }
 
     async initializeApp() {
@@ -162,14 +179,19 @@ class SyncApp {
 
     // Handle toggling sync
     handleToggleSync() {
+        console.log('Toggle sync button clicked');
         if (this.isWatching) {
+            console.log('Stopping sync');
             ipcRenderer.send('stop-sync');
         } else {
+            console.log('Starting sync');
             const itemsToSync = this.getAllPaths(this.syncItems);
+            console.log('Items to sync:', itemsToSync);
             ipcRenderer.send('start-sync', itemsToSync);
         }
         this.isWatching = !this.isWatching;
         this.domElements.toggleSyncButton.textContent = this.isWatching ? 'Stop Synchronization' : 'Start Synchronization';
+        this.addConsoleEntry('info', this.isWatching ? 'Synchronization started' : 'Synchronization stopped');
     }
 
     // Get all paths from syncItems
@@ -185,6 +207,7 @@ class SyncApp {
 
     // Add an entry to the console
     addConsoleEntry(type, message) {
+        console.log(`Console entry: [${type}] ${message}`); // Add this line
         const entry = document.createElement('div');
         entry.className = `console-entry ${type}`;
         entry.textContent = message;

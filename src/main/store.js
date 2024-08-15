@@ -20,4 +20,12 @@ function getStore() {
     return store;
 }
 
-module.exports = { initStore, getStore };
+function getOrganizationUUID() {
+    return getStore().get('organizationUUID');
+}
+
+function setOrganizationUUID(uuid) {
+    getStore().set('organizationUUID', uuid);
+}
+
+module.exports = { initStore, getStore, getOrganizationUUID, setOrganizationUUID };

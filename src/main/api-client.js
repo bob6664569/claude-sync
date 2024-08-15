@@ -35,6 +35,7 @@ class ClaudeAPIClient {
             return response.data;
         } catch (error) {
             console.error('Error sending magic link:', error.response ? error.response.data : error.message);
+            throw error;
         }
     }
 
@@ -49,26 +50,24 @@ class ClaudeAPIClient {
             recaptcha_site_key: "",
             source: "claude"
         };
-        console.log(this.client);
-        console.log(payload);
         try {
             const response = await this.client.post('/auth/verify_magic_link', payload);
-            console.log(response.data);
-            const sessionKey = this.cookieJar.getCookiesSync(this.baseURL).find(cookie => cookie.key === 'sessionKey');
-            return { ...response.data, sessionKey: sessionKey ? sessionKey.value : null };
+            console.log('API response:', response.data);
+            return response.data;
         } catch (error) {
             console.error('Error verifying magic link:', error.response ? error.response.data : error.message);
+            throw error;
         }
     }
 
-    // TODO: Fix this
     async verifySession(sessionKey) {
         try {
             const response = await this.client.get('/verify-session', {
-                body: JSON.stringify({ sessionKey })
+                headers: {
+                    'Authorization': `Bearer ${sessionKey}`
+                }
             });
-            const data = await response.json();
-            return data.isValid;
+            return response.data.isValid;
         } catch (error) {
             console.error('Error verifying session:', error);
             return false;

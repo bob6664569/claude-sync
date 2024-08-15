@@ -41,7 +41,7 @@ class SyncApp {
             this.updateItemTree();
         } catch (error) {
             console.error('Error loading state:', error);
-            this.addConsoleEntry('error', 'Erreur lors du chargement de l\'état');
+            this.addConsoleEntry('error', 'Error loading state');
         }
     }
 
@@ -52,7 +52,7 @@ class SyncApp {
             this.saveState();
         } catch (error) {
             console.error('Error adding items:', error);
-            this.addConsoleEntry('error', 'Erreur lors de l\'ajout d\'éléments');
+            this.addConsoleEntry('error', 'Error adding items');
         }
     }
 
@@ -80,20 +80,20 @@ class SyncApp {
     handleWatcherReady() {
         console.log('Watcher is ready');
         this.isWatching = true;
-        this.domElements.toggleSyncButton.textContent = 'Arrêter la synchronisation';
-        this.addConsoleEntry('info', 'Synchronisation démarrée et prête');
+        this.domElements.toggleSyncButton.textContent = 'Stop Synchronization';
+        this.addConsoleEntry('info', 'Synchronization started and ready');
     }
 
     handleSyncStopped() {
         console.log('Sync stopped');
         this.isWatching = false;
-        this.domElements.toggleSyncButton.textContent = 'Démarrer la synchronisation';
-        this.addConsoleEntry('info', 'Synchronisation arrêtée');
+        this.domElements.toggleSyncButton.textContent = 'Start Synchronization';
+        this.addConsoleEntry('info', 'Synchronization stopped');
     }
 
     handleSyncError(error) {
         console.error('Sync error:', error);
-        this.addConsoleEntry('error', `Erreur de synchronisation: ${error}`);
+        this.addConsoleEntry('error', `Synchronization error: ${error}`);
     }
 
     updateItemTree() {
@@ -195,7 +195,7 @@ class SyncApp {
     }
 }
 
-// Initialisation de l'application
+// Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     const app = new SyncApp();
     app.init();

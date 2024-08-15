@@ -26,7 +26,7 @@ class LoginManager {
             this.showMessage(result.message, result.success ? 'success' : 'error');
         } catch (error) {
             console.error('Error requesting TOTP:', error);
-            this.showMessage('Une erreur est survenue lors de la demande du code', 'error');
+            this.showMessage('An error occurred while requesting the code', 'error');
         }
     }
 
@@ -37,19 +37,29 @@ class LoginManager {
             const result = await ipcRenderer.invoke('verify-totp', totp);
             if (result.success) {
                 this.showMessage('Connexion réussie', 'success');
-                // La fenêtre se fermera automatiquement si la connexion est réussie
+                // The window will close automatically if the login is successful
             } else {
                 this.showMessage(result.message, 'error');
+                if (result.message === 'The account must have an organization to function') {
+                    this.resetForms();
+                }
             }
         } catch (error) {
             console.error('Error verifying TOTP:', error);
-            this.showMessage('Une erreur est survenue lors de la vérification du code', 'error');
+            this.showMessage('An error occurred while verifying the code', 'error');
         }
     }
 
     showMessage(message, type = 'info') {
         this.messageElement.textContent = message;
         this.messageElement.className = type;
+    }
+
+    resetForms() {
+        this.emailForm.style.display = 'block';
+        this.totpForm.style.display = 'none';
+        document.getElementById('email').value = '';
+        document.getElementById('totp').value = '';
     }
 }
 

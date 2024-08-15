@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const { getStore } = require('./store');
-const { createMainWindow, closeLoginWindow, getMainWindow } = require('./windows');
+const { createMainWindow, closeLoginWindow, getMainWindow, createLoginWindow } = require('./windows');
 const { shouldIgnore, getDirectoryContents, mergeItems } = require('../utils/file-utils');
 
 class IpcHandlerManager {
@@ -30,41 +30,53 @@ class IpcHandlerManager {
                 if (result.sent) {
                     this.loginState.email = email;
                     this.loginState.totpSent = true;
-                    return { success: true, message: 'TOTP envoyé à votre adresse email' };
+                    return { success: true, message: 'TOTP sent to your email address' };
                 } else {
-                    return { success: false, message: 'Échec de l\'envoi du TOTP' };
+                    return { success: false, message: 'Failed to send TOTP' };
                 }
             } catch (error) {
                 console.error('Error requesting TOTP:', error);
-                return { success: false, message: 'Erreur lors de la demande de TOTP' };
+                return { success: false, message: 'Error while requesting TOTP' };
             }
         });
 
         ipcMain.handle('verify-totp', async (_, totp) => {
             try {
                 if (!this.loginState.totpSent) {
-                    return { success: false, message: 'Veuillez d\'abord demander un lien magique' };
+                    return { success: false, message: 'Please request a magic link first' };
                 }
 
                 const result = await this.apiClient.verifyMagicLink(this.loginState.email, totp);
+                console.log('Magic link verification result:', result);
+
+                if (!result) {
+                    return { success: false, message: 'No response from server' };
+                }
+
                 if (result.success) {
-                    this.storeSession(result.sessionKey);
+                    const organizationUUID = result.account?.memberships?.[0]?.organization?.uuid;
+                    if (!organizationUUID) {
+                        console.error('No organization UUID found in the response');
+                        this.handleLogout();
+                        return { success: false, message: 'The account must have an organization to function' };
+                    }
+                    this.storeSession(result.secret, organizationUUID);
                     await createMainWindow();
                     closeLoginWindow();
                     this.resetLoginState();
                     return { success: true };
                 } else {
-                    return { success: false, message: 'Code invalide' };
+                    return { success: false, message: result.error || 'Invalid code' };
                 }
             } catch (error) {
                 console.error('Error verifying magic link:', error);
-                return { success: false, message: 'Erreur lors de la vérification du lien magique' };
+                return { success: false, message: 'Error while verifying the magic link' };
             }
         });
 
         ipcMain.handle('check-session', async () => {
-            const sessionKey = this.getStoredSession();
-            if (sessionKey) {
+            const { sessionKey, organizationUUID } = this.getStoredSession();
+            if (sessionKey && organizationUUID) {
                 try {
                     const isValid = await this.apiClient.verifySession(sessionKey);
                     if (isValid) {
@@ -75,42 +87,13 @@ class IpcHandlerManager {
                     console.error('Error verifying session:', error);
                 }
             }
-            createLoginWindow();
+            this.handleLogout();
             return { success: false };
         });
 
         ipcMain.handle('logout', () => {
-            this.clearSession();
-            this.resetLoginState();
-            createLoginWindow();
-            if (getMainWindow()) {
-                getMainWindow().close();
-            }
+            this.handleLogout();
         });
-    }
-
-    resetLoginState() {
-        this.loginState = {
-            email: null,
-            totpSent: false
-        };
-    }
-
-    storeSession(sessionKey) {
-        getStore().set('sessionKey', sessionKey);
-    }
-
-    getStoredSession() {
-        return getStore().get('sessionKey');
-    }
-
-    clearSession() {
-        getStore().delete('sessionKey');
-    }
-
-    handleLogout() {
-        this.resetLoginState();
-        // Autres opérations de déconnexion (fermer la fenêtre principale, ouvrir la fenêtre de login, etc.)
     }
 
     setupFileSelectionHandler() {
@@ -128,7 +111,7 @@ class IpcHandlerManager {
                 }
             } catch (error) {
                 console.error('File selection error:', error);
-                throw error; // Rethrow to let the renderer handle it
+                throw error;
             }
         });
     }
@@ -169,9 +152,39 @@ class IpcHandlerManager {
         });
     }
 
-    validateCredentials(credentials) {
-        return credentials.username === CREDENTIALS.username &&
-            credentials.password === CREDENTIALS.password;
+    resetLoginState() {
+        this.loginState = {
+            email: null,
+            totpSent: false
+        };
+    }
+
+    storeSession(sessionKey, organizationUUID) {
+        console.log('Storing session:', { sessionKey, organizationUUID });
+        getStore().set('sessionKey', sessionKey);
+        getStore().set('organizationUUID', organizationUUID);
+    }
+
+    getStoredSession() {
+        const sessionKey = getStore().get('sessionKey');
+        const organizationUUID = getStore().get('organizationUUID');
+        console.log('Retrieved stored session:', { sessionKey, organizationUUID });
+        return { sessionKey, organizationUUID };
+    }
+
+    clearSession() {
+        console.log('Clearing session');
+        getStore().delete('sessionKey');
+        getStore().delete('organizationUUID');
+    }
+
+    handleLogout() {
+        this.clearSession();
+        this.resetLoginState();
+        createLoginWindow();
+        if (getMainWindow()) {
+            getMainWindow().close();
+        }
     }
 
     processSelectedPaths(filePaths) {

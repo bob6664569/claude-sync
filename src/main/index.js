@@ -2,22 +2,21 @@ const { app, BrowserWindow } = require('electron');
 const { setupIpcHandlers } = require('./ipc-handlers');
 const { initStore, getStore } = require('./store');
 const { createMainWindow, createLoginWindow } = require('./windows');
-const ApiClient = require('./api-client');
+const ClaudeAPIClient = require('./api-client');
 
 let ipcHandlerManager;
 let apiClient;
 
 async function initApp() {
     try {
-        await initStore(); // Initialiser le store de manière asynchrone
-        apiClient = new ApiClient();
+        await initStore();
+        apiClient = new ClaudeAPIClient();
         ipcHandlerManager = setupIpcHandlers(apiClient);
 
-        // Vérifier la session au démarrage
         await checkAndHandleSession();
     } catch (error) {
         console.error('Error during app initialization:', error);
-        createLoginWindow(); // Fallback to login window if there's an error
+        createLoginWindow();
     }
 }
 
@@ -25,8 +24,11 @@ async function checkAndHandleSession() {
     try {
         const store = getStore();
         const sessionKey = store.get('sessionKey');
-        if (sessionKey) {
-            const isValid = await apiClient.verifySession(sessionKey);
+        const organizationUUID = store.get('organizationUUID');
+
+        if (sessionKey && organizationUUID) {
+            apiClient.setSessionKey(sessionKey);
+            const isValid = await apiClient.verifySession(organizationUUID);
             if (isValid) {
                 createMainWindow();
                 return;

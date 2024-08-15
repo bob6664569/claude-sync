@@ -1,4 +1,5 @@
 const { ipcMain, dialog } = require('electron');
+const { v4: uuidv4, validate: uuidValidate } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
@@ -55,12 +56,13 @@ class IpcHandlerManager {
 
                 if (result.success) {
                     const organizationUUID = result.account?.memberships?.[0]?.organization?.uuid;
-                    if (!organizationUUID) {
-                        console.error('No organization UUID found in the response');
+                    if (!organizationUUID || !uuidValidate(organizationUUID)) {
+                        console.error('Invalid or missing organization UUID in the response');
                         this.handleLogout();
-                        return { success: false, message: 'The account must have an organization to function' };
+                        return { success: false, message: 'Invalid organization UUID' };
                     }
-                    this.storeSession(result.secret, organizationUUID);
+                    const sessionKey = this.apiClient.getSessionKey();
+                    this.storeSession(sessionKey, organizationUUID);
                     await createMainWindow();
                     closeLoginWindow();
                     this.resetLoginState();
@@ -75,20 +77,7 @@ class IpcHandlerManager {
         });
 
         ipcMain.handle('check-session', async () => {
-            const { sessionKey, organizationUUID } = this.getStoredSession();
-            if (sessionKey && organizationUUID) {
-                try {
-                    const isValid = await this.apiClient.verifySession(sessionKey);
-                    if (isValid) {
-                        await createMainWindow();
-                        return { success: true };
-                    }
-                } catch (error) {
-                    console.error('Error verifying session:', error);
-                }
-            }
-            this.handleLogout();
-            return { success: false };
+            return await this.verifySession();
         });
 
         ipcMain.handle('logout', () => {
@@ -159,8 +148,36 @@ class IpcHandlerManager {
         };
     }
 
+    async verifySession() {
+        try {
+            const { organizationUUID } = this.getStoredSession();
+            if (!organizationUUID || !uuidValidate(organizationUUID)) {
+                console.error('Invalid or missing organization UUID:', organizationUUID);
+                return { success: false, message: 'Invalid organization UUID' };
+            }
+
+            const isValid = await this.apiClient.verifySession(organizationUUID);
+            if (isValid) {
+                return { success: true };
+            } else {
+                return { success: false, message: 'Session is not valid' };
+            }
+        } catch (error) {
+            console.error('Error verifying session:', error);
+            return { success: false, message: 'Error while verifying the session' };
+        }
+    }
+
     storeSession(sessionKey, organizationUUID) {
         console.log('Storing session:', { sessionKey, organizationUUID });
+        if (!sessionKey) {
+            console.error('Attempt to store null or undefined sessionKey');
+            return;
+        }
+        if (!organizationUUID || !uuidValidate(organizationUUID)) {
+            console.error('Invalid organization UUID:', organizationUUID);
+            return;
+        }
         getStore().set('sessionKey', sessionKey);
         getStore().set('organizationUUID', organizationUUID);
     }

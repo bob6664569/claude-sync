@@ -1,8 +1,11 @@
+// src/renderer/main.js
+
 const { ipcRenderer } = require('electron');
 
 class SyncApp {
     constructor() {
         this.syncItems = [];
+        this.currentProjectId = null;
         this.isWatching = false;
         this.domElements = {
             addItemsButton: document.getElementById('add-items'),
@@ -11,101 +14,76 @@ class SyncApp {
             console: document.getElementById('console')
         };
 
-        this.initEventListeners();
-        this.initIpcListeners();
+        this.initializeApp();
     }
 
-    init() {
-        console.log('Initializing application');
-        this.loadState();
+    async initializeApp() {
+        await this.loadCurrentProject();
+        await this.loadSyncItems();
+        this.setupEventListeners();
+        this.updateItemTree();
     }
 
-    initEventListeners() {
+    // Load the current project ID from the main process
+    async loadCurrentProject() {
+        this.currentProjectId = await ipcRenderer.invoke('get-current-project');
+    }
+
+    // Load sync items for the current project
+    async loadSyncItems() {
+        try {
+            this.syncItems = await ipcRenderer.invoke('get-sync-items');
+        } catch (error) {
+            console.error('Error loading sync items:', error);
+            this.addConsoleEntry('error', 'Error loading sync items');
+        }
+    }
+
+    // Set up event listeners for IPC and DOM events
+    setupEventListeners() {
+        // Listen for project changes from the main process
+        ipcRenderer.on('project-changed', async (_, projectId) => {
+            console.log('Received project-changed event:', projectId);
+            this.currentProjectId = projectId;
+            await this.loadSyncItems();
+            this.updateItemTree();
+        });
+
+        // Reload data when the window regains focus
+        window.addEventListener('focus', async () => {
+            await this.loadCurrentProject();
+            await this.loadSyncItems();
+            this.updateItemTree();
+        });
+
+        // DOM event listeners
         this.domElements.addItemsButton.addEventListener('click', () => this.handleAddItems());
         this.domElements.toggleSyncButton.addEventListener('click', () => this.handleToggleSync());
     }
 
-    initIpcListeners() {
-        ipcRenderer.on('initial-state', (_, initialState) => this.handleInitialState(initialState));
-        ipcRenderer.on('file-change', (_, change) => this.handleFileChange(change));
-        ipcRenderer.on('watcher-ready', () => this.handleWatcherReady());
-        ipcRenderer.on('sync-stopped', () => this.handleSyncStopped());
-        ipcRenderer.on('sync-error', (_, error) => this.handleSyncError(error));
-    }
-
-    async loadState() {
+    // Save the current sync items to the store
+    async saveSyncItems() {
         try {
-            const state = await ipcRenderer.invoke('load-state');
-            console.log('State loaded:', state);
-            this.syncItems = state;
-            this.updateItemTree();
+            console.log('Saving sync items:', this.syncItems);
+            await ipcRenderer.invoke('save-sync-items', this.syncItems);
+            console.log('Sync items saved successfully');
         } catch (error) {
-            console.error('Error loading state:', error);
-            this.addConsoleEntry('error', 'Error loading state');
+            console.error('Error saving sync items:', error);
+            this.addConsoleEntry('error', 'Error saving sync items: ' + error.message);
         }
     }
 
-    async handleAddItems() {
-        try {
-            this.syncItems = await ipcRenderer.invoke('select-files-and-folders', this.syncItems);
-            this.updateItemTree();
-            this.saveState();
-        } catch (error) {
-            console.error('Error adding items:', error);
-            this.addConsoleEntry('error', 'Error adding items');
-        }
-    }
-
-    handleToggleSync() {
-        if (this.isWatching) {
-            ipcRenderer.send('stop-sync');
-        } else {
-            const itemsToSync = this.getAllPaths(this.syncItems);
-            console.log('Starting sync with items:', itemsToSync);
-            ipcRenderer.send('start-sync', itemsToSync);
-        }
-    }
-
-    handleInitialState(initialState) {
-        console.log('Received initial state:', initialState);
-        this.syncItems = initialState;
-        this.updateItemTree();
-    }
-
-    handleFileChange(change) {
-        console.log('File change detected:', change);
-        this.addConsoleEntry(change.type, `${change.type}: ${change.path}`);
-    }
-
-    handleWatcherReady() {
-        console.log('Watcher is ready');
-        this.isWatching = true;
-        this.domElements.toggleSyncButton.textContent = 'Stop Synchronization';
-        this.addConsoleEntry('info', 'Synchronization started and ready');
-    }
-
-    handleSyncStopped() {
-        console.log('Sync stopped');
-        this.isWatching = false;
-        this.domElements.toggleSyncButton.textContent = 'Start Synchronization';
-        this.addConsoleEntry('info', 'Synchronization stopped');
-    }
-
-    handleSyncError(error) {
-        console.error('Sync error:', error);
-        this.addConsoleEntry('error', `Synchronization error: ${error}`);
-    }
-
+    // Update the item tree in the UI
     updateItemTree() {
         console.log('Updating item tree with:', this.syncItems);
         this.domElements.itemTree.innerHTML = '';
         this.syncItems.forEach(item => {
             this.domElements.itemTree.appendChild(this.createTreeItem(item));
         });
-
         this.addTreeItemListeners();
     }
 
+    // Create a tree item element
     createTreeItem(item, parentPath = '') {
         const div = document.createElement('div');
         div.className = 'tree-item';
@@ -113,12 +91,12 @@ class SyncApp {
         const fullPath = parentPath ? `${parentPath}/${item.name}` : item.path;
 
         div.innerHTML = `
-            <span class="${itemClass}">
-                ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
-                ${item.name}
-            </span>
-            <span class="remove-btn" data-path="${fullPath}">✕</span>
-        `;
+      <span class="${itemClass}">
+        ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
+        ${item.name}
+      </span>
+      <span class="remove-btn" data-path="${fullPath}">✕</span>
+    `;
 
         if (item.isDirectory && item.children) {
             const ul = document.createElement('ul');
@@ -131,6 +109,7 @@ class SyncApp {
         return div;
     }
 
+    // Add event listeners to tree items
     addTreeItemListeners() {
         this.domElements.itemTree.querySelectorAll('.remove-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -138,7 +117,7 @@ class SyncApp {
                 const pathToRemove = e.target.getAttribute('data-path');
                 this.removeItemByPath(pathToRemove);
                 this.updateItemTree();
-                this.saveState();
+                this.saveSyncItems();
             });
         });
 
@@ -147,12 +126,12 @@ class SyncApp {
                 e.stopPropagation();
                 const treeItem = e.target.closest('.tree-item');
                 treeItem.classList.toggle('collapsed');
-                e.target.classList.toggle('expanded');
-                e.target.textContent = e.target.classList.contains('expanded') ? '▼' : '▶';
+                e.target.textContent = treeItem.classList.contains('collapsed') ? '▶' : '▼';
             });
         });
     }
 
+    // Remove an item from syncItems by its path
     removeItemByPath(pathToRemove) {
         const removeFromArray = (items) => {
             for (let i = 0; i < items.length; i++) {
@@ -172,6 +151,35 @@ class SyncApp {
         removeFromArray(this.syncItems);
     }
 
+    // Handle adding new items
+    async handleAddItems() {
+        try {
+            console.log('Current syncItems before adding:', this.syncItems);
+            const updatedItems = await ipcRenderer.invoke('select-files-and-folders', this.syncItems);
+            console.log('Updated items received:', updatedItems);
+            this.syncItems = updatedItems;
+            this.updateItemTree();
+            await this.saveSyncItems();
+            console.log('SyncItems after update:', this.syncItems);
+        } catch (error) {
+            console.error('Error adding items:', error);
+            this.addConsoleEntry('error', 'Error adding items: ' + error.message);
+        }
+    }
+
+    // Handle toggling sync
+    handleToggleSync() {
+        if (this.isWatching) {
+            ipcRenderer.send('stop-sync');
+        } else {
+            const itemsToSync = this.getAllPaths(this.syncItems);
+            ipcRenderer.send('start-sync', itemsToSync);
+        }
+        this.isWatching = !this.isWatching;
+        this.domElements.toggleSyncButton.textContent = this.isWatching ? 'Stop Synchronization' : 'Start Synchronization';
+    }
+
+    // Get all paths from syncItems
     getAllPaths(items) {
         return items.reduce((acc, item) => {
             acc.push(item.path);
@@ -182,10 +190,7 @@ class SyncApp {
         }, []);
     }
 
-    saveState() {
-        ipcRenderer.invoke('save-state', this.syncItems);
-    }
-
+    // Add an entry to the console
     addConsoleEntry(type, message) {
         const entry = document.createElement('div');
         entry.className = `console-entry ${type}`;
@@ -195,8 +200,7 @@ class SyncApp {
     }
 }
 
-// Initialize the application
+// Initialize the application when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new SyncApp();
-    app.init();
+    new SyncApp();
 });

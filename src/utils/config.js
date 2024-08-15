@@ -1,10 +1,12 @@
 const IGNORE_LIST = [
+    '.git',
     '.DS_Store',
     'Thumbs.db',
     '*.tmp',
     '*.log',
     'node_modules',
-    '.idea'
+    '.idea',
+    '.env'
 ];
 
 const CLAUDE = {

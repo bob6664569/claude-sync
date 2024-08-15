@@ -1,17 +1,19 @@
 const { app, BrowserWindow } = require('electron');
 const { setupIpcHandlers } = require('./ipc-handlers');
 const { initStore, getStore } = require('./store');
-const { createMainWindow, createLoginWindow } = require('./windows');
+const { createMainWindow, createLoginWindow, createProjectSelectionWindow } = require('./windows');
 const ClaudeAPIClient = require('./api-client');
+const { createMenu } = require('./menu');
 
-let ipcHandlerManager;
 let apiClient;
 
 async function initApp() {
     try {
         await initStore();
         apiClient = new ClaudeAPIClient();
-        ipcHandlerManager = setupIpcHandlers(apiClient);
+        setupIpcHandlers(apiClient);
+
+        createMenu(); // Add this line to create the menu
 
         await checkAndHandleSession();
     } catch (error) {
@@ -30,7 +32,12 @@ async function checkAndHandleSession() {
             apiClient.setSessionKey(sessionKey);
             const isValid = await apiClient.verifySession(organizationUUID);
             if (isValid) {
-                createMainWindow();
+                const projectId = store.get('projectId');
+                if (projectId) {
+                    createMainWindow();
+                } else {
+                    createProjectSelectionWindow();
+                }
                 return;
             }
         }

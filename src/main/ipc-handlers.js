@@ -1,10 +1,10 @@
-const { ipcMain, dialog } = require('electron');
-const { v4: uuidv4, validate: uuidValidate } = require('uuid');
+const { ipcMain, BrowserWindow, dialog } = require('electron');
+const { validate: uuidValidate } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
-const { getStore } = require('./store');
-const { createMainWindow, closeLoginWindow, getMainWindow, createLoginWindow } = require('./windows');
+const { getStore, getCurrentProjectId, setCurrentProjectId, getSyncItemsForProject, setSyncItemsForProject } = require('./store');
+const { createMainWindow, createProjectSelectionWindow, closeLoginWindow, getMainWindow } = require('./windows');
 const { shouldIgnore, getDirectoryContents, mergeItems } = require('../utils/file-utils');
 
 class IpcHandlerManager {
@@ -22,6 +22,60 @@ class IpcHandlerManager {
         this.setupFileSelectionHandler();
         this.setupStateHandlers();
         this.setupSyncHandlers();
+        this.setupProjectHandlers();
+        ipcMain.handle('logout', () => {
+            this.handleLogout();
+        });
+    }
+
+    setupProjectHandlers() {
+        ipcMain.handle('list-projects', async () => {
+            const { organizationUUID } = this.getStoredSession();
+            return await this.apiClient.listProjects(organizationUUID);
+        });
+
+        ipcMain.handle('set-project', async (_, projectId) => {
+            console.log('Setting project:', projectId);
+            setCurrentProjectId(projectId);
+            const mainWindow = getMainWindow();
+            if (mainWindow) {
+                console.log('Sending project-changed event to main window');
+                mainWindow.webContents.send('project-changed', projectId);
+            }
+            return { success: true };
+        });
+
+        ipcMain.handle('get-current-project', () => {
+            return getCurrentProjectId();
+        });
+
+        ipcMain.handle('get-sync-items', () => {
+            const currentProjectId = getCurrentProjectId();
+            return getSyncItemsForProject(currentProjectId);
+        });
+
+        ipcMain.handle('save-sync-items', (_, items) => {
+            const currentProjectId = getCurrentProjectId();
+            setSyncItemsForProject(currentProjectId, items);
+        });
+
+        ipcMain.handle('confirm-project-selection', async (event, projectId) => {
+            console.log('Confirming project selection:', projectId);
+            setCurrentProjectId(projectId);
+
+            const mainWindow = getMainWindow();
+            if (mainWindow) {
+                console.log('Sending project-changed event to main window');
+                mainWindow.webContents.send('project-changed', projectId);
+            }
+
+            const projectSelectionWindow = BrowserWindow.fromWebContents(event.sender);
+            if (projectSelectionWindow) {
+                projectSelectionWindow.close();
+            }
+
+            return { success: true };
+        });
     }
 
     setupLoginHandlers() {
@@ -79,16 +133,17 @@ class IpcHandlerManager {
         ipcMain.handle('check-session', async () => {
             return await this.verifySession();
         });
-
-        ipcMain.handle('logout', () => {
-            this.handleLogout();
-        });
     }
 
     setupFileSelectionHandler() {
         ipcMain.handle('select-files-and-folders', async (_, existingItems) => {
             try {
-                const result = await dialog.showOpenDialog(getMainWindow(), {
+                const mainWindow = getMainWindow();
+                if (!mainWindow) {
+                    throw new Error('Main window not found');
+                }
+
+                const result = await dialog.showOpenDialog(mainWindow, {
                     properties: ['openFile', 'openDirectory', 'multiSelections']
                 });
 
@@ -96,7 +151,9 @@ class IpcHandlerManager {
                     return existingItems;
                 } else {
                     const newItems = this.processSelectedPaths(result.filePaths);
-                    return mergeItems(existingItems, newItems);
+                    const mergedItems = mergeItems(existingItems, newItems);
+                    console.log('Merged items:', mergedItems);
+                    return mergedItems;
                 }
             } catch (error) {
                 console.error('File selection error:', error);

@@ -28,4 +28,39 @@ function setOrganizationUUID(uuid) {
     getStore().set('organizationUUID', uuid);
 }
 
-module.exports = { initStore, getStore, getOrganizationUUID, setOrganizationUUID };
+function getProjectId() {
+    return getStore().get('projectId');
+}
+
+function setProjectId(projectId) {
+    getStore().set('projectId', projectId);
+}
+
+function getCurrentProjectId() {
+    return getStore().get('currentProjectId');
+}
+
+function setCurrentProjectId(projectId) {
+    getStore().set('currentProjectId', projectId);
+}
+
+function getSyncItemsForProject(projectId) {
+    const allSyncItems = getStore().get('syncItems', {});
+    return allSyncItems[projectId] || [];
+}
+
+function setSyncItemsForProject(projectId, items) {
+    const allSyncItems = getStore().get('syncItems', {});
+    allSyncItems[projectId] = items;
+    console.log(allSyncItems);
+    getStore().set('syncItems', allSyncItems);
+}
+
+module.exports = {
+    initStore,
+    getStore,
+    getCurrentProjectId,
+    setCurrentProjectId,
+    getSyncItemsForProject,
+    setSyncItemsForProject
+};

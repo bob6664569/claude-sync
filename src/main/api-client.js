@@ -48,8 +48,8 @@ class ClaudeAPIClient {
 
         if (sessionKey) {
             console.log('Session Key:', sessionKey);
-            this.setSessionCookie(sessionKey);
-            console.log('Session cookie set from stored sessionKey');
+            this.setSessionKey(sessionKey); // Changé de setSessionCookie à setSessionKey
+            console.log('Session key set from stored sessionKey');
         } else {
             console.log('No session key found in store');
         }
@@ -146,7 +146,7 @@ class ClaudeAPIClient {
         const store = getStore();
         store.set('sessionKey', sessionKey);
         console.log('Session Key updated in store:', sessionKey);
-        this.initializeSession();
+        this.setSessionKey(sessionKey);
     }
 
     updateOrganizationUUID(organizationUUID) {

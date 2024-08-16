@@ -383,24 +383,19 @@ class IpcHandlerManager {
         const apiFileName = path.join(rootFolder, relativeFilePath).replace(/\\/g, '/');
 
         try {
-            // First, list existing files
             const existingFiles = await this.apiClient.listProjectFiles(organizationUUID, projectUUID);
             const existingFile = existingFiles.find(file => file.file_name === apiFileName);
 
-            // If file exists, delete it first
             if (existingFile) {
+                // File exists, delete it
                 await this.apiClient.deleteFile(organizationUUID, projectUUID, existingFile.uuid);
+                console.log(`Deleted existing file ${apiFileName}`);
             }
 
-            // Now upload the new/updated file
-            const result = await this.apiClient.uploadFile(organizationUUID, projectUUID, apiFileName, filePath);
+            // Upload the file (whether it existed before or not)
+            await this.apiClient.uploadFile(organizationUUID, projectUUID, apiFileName, filePath);
+            console.log(`Uploaded ${apiFileName}`);
 
-            if (result.skipped) {
-                console.log(`Skipped ${apiFileName}: ${result.reason}`);
-                return { skipped: true, reason: result.reason };
-            }
-
-            console.log(`Synced ${apiFileName}`);
             return { synced: true };
         } catch (error) {
             console.error(`Error syncing file ${filePath}:`, error);

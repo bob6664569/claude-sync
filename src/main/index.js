@@ -53,10 +53,15 @@ async function checkAndHandleSession() {
 }
 
 app.on('ready', () => {
-    initApp().catch(error => {
-        console.error('Failed to initialize app:', error);
+    try {
+        initApp().catch(error => {
+            console.error('Failed to initialize app:', error);
+            app.quit();
+        });
+    } catch (error) {
+        console.error('Uncaught exception during app initialization:', error);
         app.quit();
-    });
+    }
 });
 
 app.on('window-all-closed', () => {

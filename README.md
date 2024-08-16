@@ -58,21 +58,25 @@ claude-sync/
 ├── src/
 │   ├── main/
 │   │   ├── index.js
-│   │   ├── app.js
-│   │   ├── store.js
-│   │   ├── windows.js
+│   │   ├── api-client.js
 │   │   ├── ipc-handlers.js
-│   │   └── api-client.js
+│   │   ├── menu.js
+│   │   ├── store.js
+│   │   └── windows.js
 │   ├── renderer/
 │   │   ├── login.html
 │   │   ├── login.js
 │   │   ├── main.html
 │   │   ├── main.js
+│   │   ├── project-selection.html
+│   │   ├── project-selection.js
 │   │   └── styles.css
 │   └── utils/
+│       ├── config.js
 │       ├── file-utils.js
-│       └── config.js
+│       └── logger.js
 ├── package.json
+├── README.md
 └── .gitignore
 ```
 

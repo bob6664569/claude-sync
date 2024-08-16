@@ -1,6 +1,6 @@
 const { ipcMain, BrowserWindow, dialog } = require('electron');
 const { validate: uuidValidate } = require('uuid');
-const fs = require('fs');
+const fs = require('node:fs/promises');
 const path = require('path');
 const chokidar = require('chokidar');
 const { getStore, getCurrentProjectId, setCurrentProjectId, getSyncItemsForProject, setSyncItemsForProject } = require('./store');
@@ -326,13 +326,98 @@ class IpcHandlerManager {
         }
     }
 
-    handleFileEvent(eventType, path) {
-        console.log(`File ${path} has been ${eventType}ed`);
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-            mainWindow.webContents.send('file-change', { type: eventType, path });
-        } else {
-            console.log('Main window not found, unable to send file-change event');
+    async handleFileEvent(eventType, filePath) {
+        console.log(`File ${filePath} has been ${eventType}ed`);
+
+        const { organizationUUID } = this.getStoredSession();
+        const projectUUID = getCurrentProjectId();
+        const rootInfo = this.getSyncRootForFile(filePath);
+
+        if (!rootInfo) {
+            console.error(`No sync root found for file: ${filePath}`);
+            return;
+        }
+
+        const { syncRoot } = rootInfo;
+
+        try {
+            if (eventType === 'add' || eventType === 'change') {
+                await this.syncFile(organizationUUID, projectUUID, filePath, syncRoot);
+            } else if (eventType === 'unlink') {
+                await this.deleteRemoteFile(organizationUUID, projectUUID, filePath, syncRoot);
+            }
+
+            const mainWindow = getMainWindow();
+            if (mainWindow) {
+                mainWindow.webContents.send('file-change', { type: eventType, path: filePath });
+            }
+        } catch (error) {
+            console.error(`Error handling file event (${eventType}):`, error);
+            const mainWindow = getMainWindow();
+            if (mainWindow) {
+                mainWindow.webContents.send('sync-error', `Error syncing file: ${filePath}`);
+            }
+        }
+    }
+
+    getSyncRootForFile(filePath) {
+        const currentProjectId = getCurrentProjectId();
+        const syncItems = getSyncItemsForProject(currentProjectId);
+
+        for (const item of syncItems) {
+            if (path.normalize(filePath).startsWith(path.normalize(item.path))) {
+                return {
+                    syncRoot: item.path,
+                    rootFolder: path.basename(item.path)
+                };
+            }
+        }
+
+        console.error(`No sync root found for file: ${filePath}`);
+        return null;
+    }
+
+    async syncFile(organizationUUID, projectUUID, filePath, syncRoot) {
+        const rootFolder = path.basename(syncRoot);
+        const relativeFilePath = path.relative(syncRoot, filePath);
+        const apiFileName = path.join(rootFolder, relativeFilePath).replace(/\\/g, '/');
+
+        try {
+            // First, list existing files
+            const existingFiles = await this.apiClient.listProjectFiles(organizationUUID, projectUUID);
+            const existingFile = existingFiles.find(file => file.file_name === apiFileName);
+
+            // If file exists, delete it first
+            if (existingFile) {
+                await this.apiClient.deleteFile(organizationUUID, projectUUID, existingFile.uuid);
+            }
+
+            // Now upload the new/updated file
+            const result = await this.apiClient.uploadFile(organizationUUID, projectUUID, apiFileName, filePath);
+
+            if (result.skipped) {
+                console.log(`Skipped ${apiFileName}: ${result.reason}`);
+                return { skipped: true, reason: result.reason };
+            }
+
+            console.log(`Synced ${apiFileName}`);
+            return { synced: true };
+        } catch (error) {
+            console.error(`Error syncing file ${filePath}:`, error);
+            throw error;
+        }
+    }
+
+    async deleteRemoteFile(organizationUUID, projectUUID, filePath, syncRoot) {
+        const rootFolder = path.basename(syncRoot);
+        const relativeFilePath = path.relative(syncRoot, filePath);
+        const apiFileName = path.join(rootFolder, relativeFilePath).replace(/\\/g, '/');
+
+        const existingFiles = await this.apiClient.listProjectFiles(organizationUUID, projectUUID);
+        const existingFile = existingFiles.find(file => file.file_name === apiFileName);
+
+        if (existingFile) {
+            await this.apiClient.deleteFile(organizationUUID, projectUUID, existingFile.uuid);
         }
     }
 

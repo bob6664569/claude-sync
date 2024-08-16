@@ -23,6 +23,11 @@ class SyncApp {
             this.addConsoleEntry(data.type, `${data.type.charAt(0).toUpperCase() + data.type.slice(1)}: ${data.path}`);
         });
 
+        ipcRenderer.on('sync-error', (_, error) => {
+            console.error('Received sync-error event:', error);
+            this.addConsoleEntry('error', `Sync error: ${error}`);
+        });
+
         ipcRenderer.on('watcher-ready', () => {
             console.log('Received watcher-ready event');
             this.addConsoleEntry('info', 'File watcher is ready');

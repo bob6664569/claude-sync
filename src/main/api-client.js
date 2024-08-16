@@ -1,8 +1,9 @@
+const fs = require('node:fs/promises');
 const axios = require('axios');
 const { wrapper } = require('axios-cookiejar-support');
 const tough = require('tough-cookie');
 
-const { CLAUDE } = require('../utils/config');
+const { CLAUDE, MAX_FILE_SIZE } = require('../utils/config');
 const { getStore } = require('./store');
 
 class ClaudeAPIClient {
@@ -125,6 +126,47 @@ class ClaudeAPIClient {
             return response.data;
         } catch (error) {
             console.error('Error listing projects:', error.response ? error.response.data : error.message);
+            throw error;
+        }
+    }
+
+    async listProjectFiles(organizationUUID, projectUUID) {
+        try {
+            const response = await this.client.get(`/organizations/${organizationUUID}/projects/${projectUUID}/docs`);
+            return response.data;
+        } catch (error) {
+            console.error('Error listing project files:', error);
+            throw error;
+        }
+    }
+
+    async deleteFile(organizationUUID, projectUUID, docUUID) {
+        try {
+            await this.client.delete(`/organizations/${organizationUUID}/projects/${projectUUID}/docs/${docUUID}`, {
+                data: { docUuid: docUUID }
+            });
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            throw error;
+        }
+    }
+
+    async uploadFile(organizationUUID, projectUUID, fileName, filePath) {
+        try {
+            const stats = await fs.stat(filePath);
+            if (stats.size > MAX_FILE_SIZE) {
+                console.log(`Skipping ${fileName}: File size exceeds limit`);
+                return { skipped: true, reason: 'File size exceeds limit' };
+            }
+
+            const content = await fs.readFile(filePath, 'utf-8');
+            const response = await this.client.post(`/organizations/${organizationUUID}/projects/${projectUUID}/docs`, {
+                file_name: fileName,
+                content: content
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error uploading file:', error);
             throw error;
         }
     }

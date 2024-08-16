@@ -95,17 +95,35 @@ class SyncApp {
 
     updateSyncStatus(filePath, status) {
         this.syncStatuses.set(filePath, status);
+        this.updateParentStatuses(filePath, status);
         this.updateItemTree();
     }
 
-    // Update the item tree in the UI
-    updateItemTree() {
-        console.log('Updating item tree with:', this.syncItems);
-        this.domElements.itemTree.innerHTML = '';
-        this.syncItems.forEach(item => {
-            this.domElements.itemTree.appendChild(this.createTreeItem(item));
-        });
-        this.addTreeItemListeners();
+    updateParentStatuses(filePath, status) {
+        const parts = filePath.split('/');
+        while (parts.length > 1) {
+            parts.pop();
+            const parentPath = parts.join('/');
+            const parentStatus = this.getHighestPriorityStatus(parentPath);
+            this.syncStatuses.set(parentPath, parentStatus);
+        }
+    }
+
+    getHighestPriorityStatus(dirPath) {
+        const statusPriority = ['error', 'syncing', 'queued', 'synced'];
+        let highestStatus = 'synced';
+
+        for (const [path, status] of this.syncStatuses.entries()) {
+            if (path.startsWith(dirPath + '/')) {
+                const priority = statusPriority.indexOf(status);
+                const highestPriority = statusPriority.indexOf(highestStatus);
+                if (priority < highestPriority) {
+                    highestStatus = status;
+                }
+            }
+        }
+
+        return highestStatus;
     }
 
     getSyncStatusIcon(status) {
@@ -128,14 +146,15 @@ class SyncApp {
         const div = document.createElement('div');
         div.className = 'tree-item';
 
+        const status = this.syncStatuses.get(fullPath) || 'synced';
         const content = `
-    <span class="${item.isDirectory ? 'folder' : 'file'}">
-      ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
-      ${item.name}
-      ${this.getSyncStatusIcon(this.syncStatuses.get(fullPath))}
-    </span>
-    <span class="remove-btn" data-path="${fullPath}">✕</span>
-  `;
+            <span class="${item.isDirectory ? 'folder' : 'file'}">
+                ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
+                ${item.name}
+                ${this.getSyncStatusIcon(status)}
+            </span>
+            <span class="remove-btn" data-path="${fullPath}">✕</span>
+        `;
         div.innerHTML = content;
 
         if (item.isDirectory && item.children) {
@@ -145,6 +164,15 @@ class SyncApp {
         }
 
         return div;
+    }
+
+    updateItemTree() {
+        console.log('Updating item tree with:', this.syncItems);
+        this.domElements.itemTree.innerHTML = '';
+        this.syncItems.forEach(item => {
+            this.domElements.itemTree.appendChild(this.createTreeItem(item));
+        });
+        this.addTreeItemListeners();
     }
 
     // Add event listeners to tree items

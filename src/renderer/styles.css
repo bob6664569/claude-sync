@@ -212,6 +212,7 @@ button:hover {
 .console-entry.change { color: #f39c12; }
 .console-entry.delete { color: var(--error-color); }
 .console-entry.info { color: var(--primary-color); }
+.console-entry.success { color: var(--success-color); }
 
 @media (max-width: 600px) {
     .login-container {

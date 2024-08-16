@@ -326,6 +326,7 @@ class IpcHandlerManager {
 
     handleFileEvent(eventType, filePath) {
         console.log(`File ${filePath} has been ${eventType}ed`);
+
         const mainWindow = getMainWindow();
         if (mainWindow) {
             mainWindow.webContents.send('file-change', { type: eventType, path: filePath });
@@ -365,6 +366,11 @@ class IpcHandlerManager {
 
     async syncFile({ organizationUUID, projectUUID, filePath, syncRoot, eventType }) {
         this.updateSyncStatus(filePath, 'syncing');
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+            mainWindow.webContents.send('file-change', { type: 'syncing', path: filePath });
+        }
+
         const rootFolder = path.basename(syncRoot);
         const relativeFilePath = path.relative(syncRoot, filePath);
         const apiFileName = path.join(rootFolder, relativeFilePath).replace(/\\/g, '/');
@@ -387,9 +393,15 @@ class IpcHandlerManager {
             }
 
             this.updateSyncStatus(filePath, 'synced');
+            if (mainWindow) {
+                mainWindow.webContents.send('file-change', { type: 'synced', path: filePath });
+            }
         } catch (error) {
             console.error(`Error syncing file ${filePath}:`, error);
             this.updateSyncStatus(filePath, 'error');
+            if (mainWindow) {
+                mainWindow.webContents.send('sync-error', `Error syncing ${filePath}: ${error.message}`);
+            }
             throw error;
         }
     }

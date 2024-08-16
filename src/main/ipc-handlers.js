@@ -162,7 +162,7 @@ class IpcHandlerManager {
                 if (result.canceled) {
                     return existingItems;
                 } else {
-                    const newItems = this.processSelectedPaths(result.filePaths);
+                    const newItems = await this.processSelectedPaths(result.filePaths);
                     const mergedItems = mergeItems(existingItems, newItems);
                     console.log('Merged items:', mergedItems);
                     return mergedItems;
@@ -273,11 +273,11 @@ class IpcHandlerManager {
         }
     }
 
-    processSelectedPaths(filePaths) {
-        return filePaths
+    async processSelectedPaths(filePaths) {
+        return Promise.all(filePaths
             .filter(filePath => !shouldIgnore(filePath))
-            .map(filePath => {
-                const stats = fs.statSync(filePath);
+            .map(async (filePath) => {
+                const stats = await fs.stat(filePath);
                 if (stats.isDirectory()) {
                     return {
                         name: path.basename(filePath),
@@ -292,7 +292,7 @@ class IpcHandlerManager {
                         isDirectory: false
                     };
                 }
-            });
+            }));
     }
 
     startFileWatcher(items) {
@@ -331,6 +331,10 @@ class IpcHandlerManager {
 
     async handleFileEvent(eventType, filePath) {
         console.log(`File ${filePath} has been ${eventType}ed`);
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+            mainWindow.webContents.send('file-change', { type: eventType, path: filePath });
+        }
 
         const { organizationUUID } = this.getStoredSession();
         const projectUUID = getCurrentProjectId();

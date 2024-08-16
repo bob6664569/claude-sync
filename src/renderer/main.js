@@ -171,6 +171,10 @@ class SyncApp {
                 const treeItem = e.target.closest('.tree-item');
                 treeItem.classList.toggle('collapsed');
                 e.target.textContent = treeItem.classList.contains('collapsed') ? '▶' : '▼';
+                const childrenContainer = treeItem.querySelector('ul');
+                if (childrenContainer) {
+                    childrenContainer.style.display = treeItem.classList.contains('collapsed') ? 'none' : 'block';
+                }
             });
         });
     }
@@ -239,9 +243,7 @@ class SyncApp {
         }, []);
     }
 
-    // Add an entry to the console
     addConsoleEntry(type, message) {
-        console.log(`Console entry: [${type}] ${message}`); // Add this line
         const entry = document.createElement('div');
         entry.className = `console-entry ${type}`;
         entry.textContent = message;

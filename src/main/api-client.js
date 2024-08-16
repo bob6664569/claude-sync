@@ -13,7 +13,7 @@ class ClaudeAPIClient {
     }
 
     createAxiosClient() {
-        return wrapper(axios.create({
+        const client = wrapper(axios.create({
             baseURL: CLAUDE.baseURL,
             headers: {
                 'Content-Type': 'application/json',
@@ -24,6 +24,16 @@ class ClaudeAPIClient {
             jar: this.cookieJar,
             withCredentials: true
         }));
+
+        client.interceptors.response.use(
+            response => response,
+            error => {
+                console.error('API request failed:', error.response?.data || error.message);
+                throw error;
+            }
+        );
+
+        return client;
     }
 
     setSessionKey(sessionKey) {
@@ -36,30 +46,6 @@ class ClaudeAPIClient {
         });
         this.cookieJar.setCookieSync(cookie, 'https://claude.ai');
         console.log('Session key set in cookie jar');
-    }
-
-    initializeSession() {
-        const store = getStore();
-        const sessionKey = store.get('sessionKey');
-        const organizationUUID = store.get('organizationUUID');
-
-        console.log('Initializing session...');
-        console.log('Session Key found in store:', sessionKey ? 'Yes' : 'No');
-        console.log('Organization UUID found in store:', organizationUUID ? 'Yes' : 'No');
-
-        if (sessionKey) {
-            console.log('Session Key:', sessionKey);
-            this.setSessionKey(sessionKey); // Changé de setSessionCookie à setSessionKey
-            console.log('Session key set from stored sessionKey');
-        } else {
-            console.log('No session key found in store');
-        }
-
-        if (organizationUUID) {
-            console.log('Organization UUID:', organizationUUID);
-        } else {
-            console.log('No organization UUID found in store');
-        }
     }
 
     async sendMagicLink(email) {
@@ -81,41 +67,29 @@ class ClaudeAPIClient {
     }
 
     async verifyMagicLink(email, code) {
-        const payload = {
-            credentials: {
-                method: "code",
-                email_address: email,
-                code: code
-            },
-            recaptcha_token: "",
-            recaptcha_site_key: "",
-            source: "claude"
-        };
         try {
-            const response = await this.client.post('/auth/verify_magic_link', payload);
-            console.log('API response:', response.data);
+            const response = await this.client.post('/auth/verify_magic_link', {
+                credentials: { method: "code", email_address: email, code },
+                recaptcha_token: "",
+                recaptcha_site_key: "",
+                source: "claude"
+            });
 
-            // Extract sessionKey from cookies
-            const cookies = this.cookieJar.getCookiesSync('https://claude.ai');
-            const sessionKeyCookie = cookies.find(cookie => cookie.key === 'sessionKey');
+            const sessionKeyCookie = this.cookieJar.getCookiesSync('https://claude.ai')
+                .find(cookie => cookie.key === 'sessionKey');
 
             if (sessionKeyCookie) {
                 this.updateSessionKey(sessionKeyCookie.value);
-            } else {
-                console.error('Session key not found in cookies');
             }
 
-            // Extract organization UUID from the response
-            if (response.data && response.data.account && response.data.account.memberships && response.data.account.memberships.length > 0) {
-                const organizationUUID = response.data.account.memberships[0].organization.uuid;
+            const organizationUUID = response.data?.account?.memberships?.[0]?.organization?.uuid;
+            if (organizationUUID) {
                 this.updateOrganizationUUID(organizationUUID);
-            } else {
-                console.error('Organization UUID not found in the response');
             }
 
             return response.data;
         } catch (error) {
-            console.error('Error verifying magic link:', error.response ? error.response.data : error.message);
+            console.error('Error verifying magic link:', error.response?.data || error.message);
             throw error;
         }
     }

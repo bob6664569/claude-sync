@@ -20,22 +20,6 @@ function getStore() {
     return store;
 }
 
-function getOrganizationUUID() {
-    return getStore().get('organizationUUID');
-}
-
-function setOrganizationUUID(uuid) {
-    getStore().set('organizationUUID', uuid);
-}
-
-function getProjectId() {
-    return getStore().get('projectId');
-}
-
-function setProjectId(projectId) {
-    getStore().set('projectId', projectId);
-}
-
 function getCurrentProjectId() {
     return getStore().get('currentProjectId');
 }

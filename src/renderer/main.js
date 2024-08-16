@@ -123,30 +123,24 @@ class SyncApp {
         }
     }
 
-    // Create a tree item element
     createTreeItem(item, parentPath = '') {
+        const fullPath = parentPath ? `${parentPath}/${item.name}` : item.path;
         const div = document.createElement('div');
         div.className = 'tree-item';
-        const itemClass = item.isDirectory ? 'folder' : 'file';
-        const fullPath = parentPath ? `${parentPath}/${item.name}` : item.path;
 
-        const syncStatus = this.syncStatuses.get(fullPath);
-        const statusIcon = this.getSyncStatusIcon(syncStatus);
-
-        div.innerHTML = `
-            <span class="${itemClass}">
-                ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
-                ${item.name}
-                ${statusIcon}
-            </span>
-            <span class="remove-btn" data-path="${fullPath}">✕</span>
-        `;
+        const content = `
+    <span class="${item.isDirectory ? 'folder' : 'file'}">
+      ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
+      ${item.name}
+      ${this.getSyncStatusIcon(this.syncStatuses.get(fullPath))}
+    </span>
+    <span class="remove-btn" data-path="${fullPath}">✕</span>
+  `;
+        div.innerHTML = content;
 
         if (item.isDirectory && item.children) {
             const ul = document.createElement('ul');
-            item.children.forEach(child => {
-                ul.appendChild(this.createTreeItem(child, fullPath));
-            });
+            item.children.forEach(child => ul.appendChild(this.createTreeItem(child, fullPath)));
             div.appendChild(ul);
         }
 

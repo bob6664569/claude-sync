@@ -60,6 +60,5 @@ function mergeItems(existingItems, newItems) {
 module.exports = {
     shouldIgnore,
     getDirectoryContents,
-    isSubPath,
     mergeItems
 };

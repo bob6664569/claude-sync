@@ -6,6 +6,7 @@ const chokidar = require('chokidar');
 const { getStore, getCurrentProjectId, setCurrentProjectId, getSyncItemsForProject, setSyncItemsForProject } = require('./store');
 const { createMainWindow, createProjectSelectionWindow, closeLoginWindow, getMainWindow } = require('./windows');
 const { shouldIgnore, getDirectoryContents, mergeItems } = require('../utils/file-utils');
+const SyncQueue = require('../utils/SyncQueue');
 
 let handlersSetup = false;
 
@@ -17,9 +18,7 @@ class IpcHandlerManager {
             email: null,
             totpSent: false
         };
-        this.syncQueue = [];
-        this.isSyncing = false;
-        this.syncingFiles = new Set();
+        this.syncQueue = new SyncQueue(this.syncFile.bind(this));
     }
 
     setupHandlers() {
@@ -87,23 +86,19 @@ class IpcHandlerManager {
     }
 
     setupLoginHandlers() {
-        if (!ipcMain.listenerCount('request-totp')) {
-            ipcMain.handle('request-totp', async (_, email) => {
-                try {
-                    const result = await this.apiClient.sendMagicLink(email);
-                    if (result.sent) {
-                        this.loginState.email = email;
-                        this.loginState.totpSent = true;
-                        return {success: true, message: 'TOTP sent to your email address'};
-                    } else {
-                        return {success: false, message: 'Failed to send TOTP'};
-                    }
-                } catch (error) {
-                    console.error('Error requesting TOTP:', error);
-                    return {success: false, message: 'Error while requesting TOTP'};
+        ipcMain.handle('request-totp', async (_, email) => {
+            try {
+                const result = await this.apiClient.sendMagicLink(email);
+                if (result.sent) {
+                    this.loginState = { email, totpSent: true };
+                    return { success: true, message: 'TOTP sent to your email address' };
                 }
-            });
-        }
+                return { success: false, message: 'Failed to send TOTP' };
+            } catch (error) {
+                console.error('Error requesting TOTP:', error);
+                return { success: false, message: 'Error while requesting TOTP' };
+            }
+        });
 
         if (!ipcMain.listenerCount('verify-totp')) {
             ipcMain.handle('verify-totp', async (_, totp) => {
@@ -329,7 +324,7 @@ class IpcHandlerManager {
         }
     }
 
-    async handleFileEvent(eventType, filePath) {
+    handleFileEvent(eventType, filePath) {
         console.log(`File ${filePath} has been ${eventType}ed`);
         const mainWindow = getMainWindow();
         if (mainWindow) {
@@ -347,33 +342,8 @@ class IpcHandlerManager {
 
         const { syncRoot } = rootInfo;
 
-        this.syncingFiles.add(filePath);
         this.updateSyncStatus(filePath, 'queued');
-
-        this.syncQueue.push({ organizationUUID, projectUUID, filePath, syncRoot });
-        await this.processQueue();
-    }
-
-    async processQueue() {
-        if (this.isSyncing || this.syncQueue.length === 0) {
-            return;
-        }
-
-        this.isSyncing = true;
-        const { organizationUUID, projectUUID, filePath, syncRoot } = this.syncQueue.shift();
-
-        try {
-            this.updateSyncStatus(filePath, 'syncing');
-            await this.syncFile(organizationUUID, projectUUID, filePath, syncRoot);
-            this.updateSyncStatus(filePath, 'synced');
-        } catch (error) {
-            console.error(`Error syncing file ${filePath}:`, error);
-            this.updateSyncStatus(filePath, 'error');
-        } finally {
-            this.syncingFiles.delete(filePath);
-            this.isSyncing = false;
-            await this.processQueue(); // Process next file in queue
-        }
+        this.syncQueue.add({ organizationUUID, projectUUID, filePath, syncRoot, eventType });
     }
 
     getSyncRootForFile(filePath) {
@@ -393,7 +363,7 @@ class IpcHandlerManager {
         return null;
     }
 
-    async syncFile(organizationUUID, projectUUID, filePath, syncRoot) {
+    async syncFile({ organizationUUID, projectUUID, filePath, syncRoot, eventType }) {
         this.updateSyncStatus(filePath, 'syncing');
         const rootFolder = path.basename(syncRoot);
         const relativeFilePath = path.relative(syncRoot, filePath);
@@ -403,17 +373,20 @@ class IpcHandlerManager {
             const existingFiles = await this.apiClient.listProjectFiles(organizationUUID, projectUUID);
             const existingFile = existingFiles.find(file => file.file_name === apiFileName);
 
-            if (existingFile) {
-                // File exists, delete it
-                await this.apiClient.deleteFile(organizationUUID, projectUUID, existingFile.uuid);
-                console.log(`Deleted existing file ${apiFileName}`);
+            if (eventType === 'delete') {
+                if (existingFile) {
+                    await this.apiClient.deleteFile(organizationUUID, projectUUID, existingFile.uuid);
+                    console.log(`Deleted file ${apiFileName}`);
+                }
+            } else {
+                if (existingFile) {
+                    await this.apiClient.deleteFile(organizationUUID, projectUUID, existingFile.uuid);
+                }
+                await this.apiClient.uploadFile(organizationUUID, projectUUID, apiFileName, filePath);
+                console.log(`Uploaded ${apiFileName}`);
             }
 
-            // Upload the file (whether it existed before or not)
-            await this.apiClient.uploadFile(organizationUUID, projectUUID, apiFileName, filePath);
-            console.log(`Uploaded ${apiFileName}`);
             this.updateSyncStatus(filePath, 'synced');
-            return { synced: true };
         } catch (error) {
             console.error(`Error syncing file ${filePath}:`, error);
             this.updateSyncStatus(filePath, 'error');
@@ -425,19 +398,6 @@ class IpcHandlerManager {
         const mainWindow = getMainWindow();
         if (mainWindow) {
             mainWindow.webContents.send('sync-status-update', { filePath, status });
-        }
-    }
-
-    async deleteRemoteFile(organizationUUID, projectUUID, filePath, syncRoot) {
-        const rootFolder = path.basename(syncRoot);
-        const relativeFilePath = path.relative(syncRoot, filePath);
-        const apiFileName = path.join(rootFolder, relativeFilePath).replace(/\\/g, '/');
-
-        const existingFiles = await this.apiClient.listProjectFiles(organizationUUID, projectUUID);
-        const existingFile = existingFiles.find(file => file.file_name === apiFileName);
-
-        if (existingFile) {
-            await this.apiClient.deleteFile(organizationUUID, projectUUID, existingFile.uuid);
         }
     }
 

@@ -12,6 +12,7 @@ class SyncApp {
             itemTree: document.getElementById('item-tree'),
             console: document.getElementById('console')
         };
+        this.syncStatuses = new Map();
 
         this.initializeApp();
         this.setupIpcListeners();
@@ -21,6 +22,10 @@ class SyncApp {
         ipcRenderer.on('file-change', (_, data) => {
             console.log('Received file-change event:', data);
             this.addConsoleEntry(data.type, `${data.type.charAt(0).toUpperCase() + data.type.slice(1)}: ${data.path}`);
+        });
+
+        ipcRenderer.on('sync-status-update', (_, data) => {
+            this.updateSyncStatus(data.filePath, data.status);
         });
 
         ipcRenderer.on('sync-error', (_, error) => {
@@ -88,6 +93,11 @@ class SyncApp {
         }
     }
 
+    updateSyncStatus(filePath, status) {
+        this.syncStatuses.set(filePath, status);
+        this.updateItemTree();
+    }
+
     // Update the item tree in the UI
     updateItemTree() {
         console.log('Updating item tree with:', this.syncItems);
@@ -98,6 +108,21 @@ class SyncApp {
         this.addTreeItemListeners();
     }
 
+    getSyncStatusIcon(status) {
+        switch (status) {
+            case 'queued':
+                return '<span class="sync-status queued">🕒</span>';
+            case 'syncing':
+                return '<span class="sync-status syncing">↻</span>';
+            case 'synced':
+                return '<span class="sync-status synced">✓</span>';
+            case 'error':
+                return '<span class="sync-status error">❌</span>';
+            default:
+                return '';
+        }
+    }
+
     // Create a tree item element
     createTreeItem(item, parentPath = '') {
         const div = document.createElement('div');
@@ -105,13 +130,17 @@ class SyncApp {
         const itemClass = item.isDirectory ? 'folder' : 'file';
         const fullPath = parentPath ? `${parentPath}/${item.name}` : item.path;
 
+        const syncStatus = this.syncStatuses.get(fullPath);
+        const statusIcon = this.getSyncStatusIcon(syncStatus);
+
         div.innerHTML = `
-      <span class="${itemClass}">
-        ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
-        ${item.name}
-      </span>
-      <span class="remove-btn" data-path="${fullPath}">✕</span>
-    `;
+            <span class="${itemClass}">
+                ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
+                ${item.name}
+                ${statusIcon}
+            </span>
+            <span class="remove-btn" data-path="${fullPath}">✕</span>
+        `;
 
         if (item.isDirectory && item.children) {
             const ul = document.createElement('ul');

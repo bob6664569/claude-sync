@@ -243,3 +243,29 @@ button:hover {
 #logout-button:hover {
     background-color: #c0392b;
 }
+
+.sync-status {
+    margin-left: 5px;
+    font-size: 0.8em;
+}
+
+.sync-status.queued {
+    color: #f39c12;
+}
+
+.sync-status.syncing {
+    color: #3498db;
+    animation: spin 1s linear infinite;
+}
+
+.sync-status.synced {
+    color: #2ecc71;
+}
+
+.sync-status.error {
+    color: #e74c3c;
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}

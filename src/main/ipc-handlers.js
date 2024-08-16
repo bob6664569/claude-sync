@@ -17,6 +17,9 @@ class IpcHandlerManager {
             email: null,
             totpSent: false
         };
+        this.syncQueue = [];
+        this.isSyncing = false;
+        this.syncingFiles = new Set();
     }
 
     setupHandlers() {
@@ -340,23 +343,32 @@ class IpcHandlerManager {
 
         const { syncRoot } = rootInfo;
 
-        try {
-            if (eventType === 'add' || eventType === 'change') {
-                await this.syncFile(organizationUUID, projectUUID, filePath, syncRoot);
-            } else if (eventType === 'unlink') {
-                await this.deleteRemoteFile(organizationUUID, projectUUID, filePath, syncRoot);
-            }
+        this.syncingFiles.add(filePath);
+        this.updateSyncStatus(filePath, 'queued');
 
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('file-change', { type: eventType, path: filePath });
-            }
+        this.syncQueue.push({ organizationUUID, projectUUID, filePath, syncRoot });
+        await this.processQueue();
+    }
+
+    async processQueue() {
+        if (this.isSyncing || this.syncQueue.length === 0) {
+            return;
+        }
+
+        this.isSyncing = true;
+        const { organizationUUID, projectUUID, filePath, syncRoot } = this.syncQueue.shift();
+
+        try {
+            this.updateSyncStatus(filePath, 'syncing');
+            await this.syncFile(organizationUUID, projectUUID, filePath, syncRoot);
+            this.updateSyncStatus(filePath, 'synced');
         } catch (error) {
-            console.error(`Error handling file event (${eventType}):`, error);
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('sync-error', `Error syncing file: ${filePath}`);
-            }
+            console.error(`Error syncing file ${filePath}:`, error);
+            this.updateSyncStatus(filePath, 'error');
+        } finally {
+            this.syncingFiles.delete(filePath);
+            this.isSyncing = false;
+            await this.processQueue(); // Process next file in queue
         }
     }
 
@@ -378,6 +390,7 @@ class IpcHandlerManager {
     }
 
     async syncFile(organizationUUID, projectUUID, filePath, syncRoot) {
+        this.updateSyncStatus(filePath, 'syncing');
         const rootFolder = path.basename(syncRoot);
         const relativeFilePath = path.relative(syncRoot, filePath);
         const apiFileName = path.join(rootFolder, relativeFilePath).replace(/\\/g, '/');
@@ -395,11 +408,19 @@ class IpcHandlerManager {
             // Upload the file (whether it existed before or not)
             await this.apiClient.uploadFile(organizationUUID, projectUUID, apiFileName, filePath);
             console.log(`Uploaded ${apiFileName}`);
-
+            this.updateSyncStatus(filePath, 'synced');
             return { synced: true };
         } catch (error) {
             console.error(`Error syncing file ${filePath}:`, error);
+            this.updateSyncStatus(filePath, 'error');
             throw error;
+        }
+    }
+
+    updateSyncStatus(filePath, status) {
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+            mainWindow.webContents.send('sync-status-update', { filePath, status });
         }
     }
 

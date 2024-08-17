@@ -1,5 +1,7 @@
 # Claude Sync
 
+![capture.png](capture.png)
+
 Claude Sync is a desktop application developed with Electron for synchronizing files with Claude's "Projects" feature. It provides an intuitive user interface for selecting and syncing files and folders with your Claude projects.
 
 ## Features

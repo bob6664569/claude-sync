@@ -15,8 +15,20 @@ class SyncApp {
         };
         this.syncStatuses = new Map();
         this.queuedFiles = 0;
+        this.collapsedFolders = new Set();
         this.initializeApp();
         this.setupIpcListeners();
+    }
+
+    updateItemStatus(filePath, status) {
+        const item = this.domElements.itemTree.querySelector(`[data-path="${filePath}"]`);
+        if (item) {
+            const statusSpan = item.querySelector('.sync-status');
+            if (statusSpan) {
+                statusSpan.className = `sync-status ${status}`;
+                statusSpan.outerHTML = this.getSyncStatusIcon(status);
+            }
+        }
     }
 
     updateStatusLine() {
@@ -110,7 +122,7 @@ class SyncApp {
     updateSyncStatus(filePath, status) {
         this.syncStatuses.set(filePath, status);
         this.updateParentStatuses(filePath, status);
-        this.updateItemTree();
+        this.updateItemStatus(filePath, status);
         if (status === 'queued') {
             this.queuedFiles++;
         } else if (status === 'synced' || status === 'error') {
@@ -126,6 +138,7 @@ class SyncApp {
             const parentPath = parts.join('/');
             const parentStatus = this.getHighestPriorityStatus(parentPath);
             this.syncStatuses.set(parentPath, parentStatus);
+            this.updateItemStatus(parentPath, parentStatus);
         }
     }
 
@@ -165,6 +178,7 @@ class SyncApp {
         const fullPath = parentPath ? `${parentPath}/${item.name}` : item.path;
         const div = document.createElement('div');
         div.className = 'tree-item';
+        div.setAttribute('data-path', fullPath);
 
         const status = this.syncStatuses.get(fullPath) || 'synced';
         const content = `
@@ -178,7 +192,12 @@ class SyncApp {
         div.innerHTML = content;
 
         if (item.isDirectory && item.children) {
+            const isCollapsed = this.collapsedFolders.has(item.name);
+            div.classList.toggle('collapsed', isCollapsed);
+            div.querySelector('.expander').textContent = isCollapsed ? '▶' : '▼';
+
             const ul = document.createElement('ul');
+            ul.style.display = isCollapsed ? 'none' : 'block';
             item.children.forEach(child => ul.appendChild(this.createTreeItem(child, fullPath)));
             div.appendChild(ul);
         }
@@ -211,11 +230,18 @@ class SyncApp {
             expander.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const treeItem = e.target.closest('.tree-item');
+                const folderName = treeItem.querySelector('.folder').textContent.trim();
                 treeItem.classList.toggle('collapsed');
                 e.target.textContent = treeItem.classList.contains('collapsed') ? '▶' : '▼';
                 const childrenContainer = treeItem.querySelector('ul');
                 if (childrenContainer) {
                     childrenContainer.style.display = treeItem.classList.contains('collapsed') ? 'none' : 'block';
+                }
+
+                if (treeItem.classList.contains('collapsed')) {
+                    this.collapsedFolders.add(folderName);
+                } else {
+                    this.collapsedFolders.delete(folderName);
                 }
             });
         });

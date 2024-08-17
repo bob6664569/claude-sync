@@ -10,12 +10,25 @@ class SyncApp {
             addItemsButton: document.getElementById('add-items'),
             toggleSyncButton: document.getElementById('toggle-sync'),
             itemTree: document.getElementById('item-tree'),
-            console: document.getElementById('console')
+            console: document.getElementById('console'),
+            statusLine: document.getElementById('status-line')
         };
         this.syncStatuses = new Map();
-
+        this.queuedFiles = 0;
         this.initializeApp();
         this.setupIpcListeners();
+    }
+
+    updateStatusLine() {
+        let status;
+        if (this.queuedFiles > 0) {
+            status = `Syncing... ${this.queuedFiles} file(s) remaining`;
+        } else if (this.isWatching) {
+            status = 'All files synced. Watching for changes...';
+        } else {
+            status = 'Sync stopped';
+        }
+        this.domElements.statusLine.textContent = status;
     }
 
     setupIpcListeners() {
@@ -36,6 +49,7 @@ class SyncApp {
         ipcRenderer.on('watcher-ready', () => {
             console.log('Received watcher-ready event');
             this.addConsoleEntry('info', 'File watcher is ready');
+            this.updateStatusLine();
         });
 
         ipcRenderer.on('sync-error', (_, error) => {
@@ -97,6 +111,12 @@ class SyncApp {
         this.syncStatuses.set(filePath, status);
         this.updateParentStatuses(filePath, status);
         this.updateItemTree();
+        if (status === 'queued') {
+            this.queuedFiles++;
+        } else if (status === 'synced' || status === 'error') {
+            this.queuedFiles = Math.max(0, this.queuedFiles - 1);
+        }
+        this.updateStatusLine();
     }
 
     updateParentStatuses(filePath, status) {
@@ -149,7 +169,7 @@ class SyncApp {
         const status = this.syncStatuses.get(fullPath) || 'synced';
         const content = `
             <span class="${item.isDirectory ? 'folder' : 'file'}">
-                ${item.isDirectory ? '<span class="expander">▶</span>' : ''}
+                ${item.isDirectory ? '<span class="expander">▼</span>' : ''}
                 ${item.name}
                 ${this.getSyncStatusIcon(status)}
             </span>
@@ -252,6 +272,7 @@ class SyncApp {
         this.isWatching = !this.isWatching;
         this.domElements.toggleSyncButton.textContent = this.isWatching ? 'Stop Synchronization' : 'Start Synchronization';
         this.addConsoleEntry('info', this.isWatching ? 'Synchronization started' : 'Synchronization stopped');
+        this.updateStatusLine();
     }
 
     // Get all paths from syncItems

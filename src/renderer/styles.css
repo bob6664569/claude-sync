@@ -1,36 +1,55 @@
 :root {
-    --primary-color: #3498db;
+    --bg1: rgb(240, 238, 229);
+    --bg2: rgb(245, 244, 239);
+    --primary-color: rgb(83, 81, 70);
     --secondary-color: #2ecc71;
     --background-color: #f5f6fa;
-    --text-color: #34495e;
-    --input-bg-color: #ffffff;
-    --button-hover-color: #2980b9;
+    --text-color: rgb(83, 81, 70);
+    --input-bg-color: rgb(248, 248, 247);
+    --button-text-color: rgba(41, 38, 27, 0.9);
+    --button-text-hover-color: rgb(15, 15, 13);
+    --button-hover-color: rgba(201, 192, 161, 0.6);
+    --button-bg: rgba(201, 192, 161, 0.6);
+    --button-bg-1: rgba(201, 192, 161, 0.1);
+    --button-bg-2: rgba(201, 192, 161, 0.3);
     --error-color: #e74c3c;
     --success-color: #27ae60;
-    --border-color: #bdc3c7;
-    --console-bg: white;
+    --border-color: rgba(112, 107, 87, 0.5);
+    --console-bg: rgb(40, 44, 52);
+    --code-block-background: rgb(232, 229, 216);
+    --code-block-color: rgb(83, 81, 70);
     --item-tree-bg: white;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --primary-color: #3498db;
+        --bg1: rgb(43, 42, 39);
+        --bg2: rgb(47, 47, 44);
+        --primary-color: rgb(33, 32, 28);
         --secondary-color: #2ecc71;
-        --background-color: #1a1a1a;
-        --text-color: #ecf0f1;
-        --input-bg-color: #2c3e50;
-        --button-hover-color: #2980b9;
+        --background-color: #f5f6fa;
+        --text-color: rgb(245, 244, 239);
+        --input-bg-color: rgb(57, 57, 55);
+        --button-bg: rgba(15, 15, 13, 0.58);
+        --button-bg-1: rgba(15, 15, 13, 0.1);
+        --button-bg-2: rgba(15, 15, 13, 0.3);
+        --button-text-color: rgba(245, 244, 239, 0.9);
+        --button-text-hover-color: rgb(245, 244, 239);
+        --button-hover-color: rgba(15, 15, 13, 0.6);
         --error-color: #e74c3c;
         --success-color: #27ae60;
-        --border-color: #34495e;
-        --console-bg: #2c3e50;
-        --item-tree-bg: #2c3e50;
+        --border-color: rgba(112, 107, 87, 0.5);
+        --console-bg: rgb(40, 44, 52);
+        --code-block-background: rgb(33, 32, 28);
+        --code-block-color: rgba(245, 244, 239, 0.6);
+        --item-tree-bg: white;
     }
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    font-family: __tiempos_b6f14e, __tiempos_Fallback_b6f14e, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     background-color: var(--background-color);
+    background-image: linear-gradient(var(--bg1), var(--bg2));
     color: var(--text-color);
     margin: 0;
     padding: 0;
@@ -50,23 +69,23 @@ body {
 }
 
 h1 {
-    color: var(--primary-color);
-    text-align: center;
     margin-bottom: 1.5rem;
-    font-size: 2rem;
+    font-size: 18px;
+    font-weight: 500;
 }
 
 input[type="email"],
-input[type="text"] {
+input[type="text"], select {
     width: 100%;
     padding: 10px;
     margin-bottom: 1rem;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 9.6px;
     background-color: var(--input-bg-color);
     color: var(--text-color);
     font-size: 1rem;
     box-sizing: border-box;
+    box-shadow: rgba(0, 0, 0, 0) 0 0 0 0, rgba(0, 0, 0, 0) 0 0 0 0, rgba(0, 0, 0, 0.1) 0 1px 3px 0, rgba(0, 0, 0, 0.1) 0 1px 2px -1px;
 }
 
 input::placeholder {
@@ -76,18 +95,22 @@ input::placeholder {
 
 button {
     width: 100%;
-    padding: 10px;
-    border: none;
+    padding: 8px 16px;
     border-radius: 4px;
-    background-color: var(--primary-color);
-    color: white;
-    font-size: 1rem;
+    background: var(--button-bg);
+    background-image: radial-gradient(var(--button-bg-1) 50%, var(--button-bg-2));
+    color: var(--button-text-color);
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    border: 0.5px solid var(--border-color);
 }
 
 button:hover {
     background-color: var(--button-hover-color);
+    color: var(--button-text-hover-color);
 }
 
 #message {
@@ -110,12 +133,9 @@ button:hover {
 
 /* Styles pour la page principale */
 .header {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 1rem;
-    text-align: center;
-    font-size: 1.5rem;
-    font-weight: bold;
+    padding: 1.2rem 1rem 0;
+    font-size: 1.2rem;
+    font-weight: 500;
 }
 
 .container {
@@ -143,7 +163,9 @@ button:hover {
 }
 
 .tree-item ul {
-    margin-left: 1.25rem;
+    margin-left: 0.2rem;
+    padding-left: 13px;
+    margin-top: 8px;
 }
 
 .folder {
@@ -179,8 +201,7 @@ button:hover {
 
 #console-wrapper {
     background-color: var(--console-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
+    color: white;
     font-size: 0.8rem;
     height: 150px;
     display: flex;
@@ -192,8 +213,8 @@ button:hover {
 
 #console-header {
     padding: 0.25rem 0.5rem;
-    background-color: var(--primary-color);
-    color: white;
+    background-color: var(--code-block-background);
+    color: var(--code-block-color);
     font-weight: bold;
 }
 
@@ -201,7 +222,7 @@ button:hover {
     flex-grow: 1;
     overflow-y: auto;
     padding: 0.5rem;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: "Fira Code", "Fira Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
 }
 
 .console-entry {
@@ -269,4 +290,14 @@ button:hover {
 
 @keyframes spin {
     100% { transform: rotate(360deg); }
+}
+
+#status-line {
+    margin: 10px 0;
+    padding: 5px;
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    text-align: center;
 }

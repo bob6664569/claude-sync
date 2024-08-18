@@ -1,6 +1,6 @@
 # Claude Sync
 
-![capture.png](capture.png)
+![assets/capture.png](assets/capture.png)
 
 Claude Sync is a desktop application developed with Electron for synchronizing files with Claude's "Projects" feature. It provides an intuitive user interface for selecting and syncing files and folders with your Claude projects.
 
@@ -38,7 +38,7 @@ Claude Sync is a desktop application developed with Electron for synchronizing f
 
 Just create a `.env` file in the root of the project and add the necessary environment variables:
 ```
-API_URL=https://your-claude-api-url.com
+API_URL=https://api.claude.ai/api/
 ```
 
 ## Usage

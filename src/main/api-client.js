@@ -53,7 +53,7 @@ class ClaudeAPIClient {
             utc_offset: -120,
             email_address: email,
             recaptcha_token: "",
-            recaptcha_site_key: "",
+            recaptcha_site_key: CLAUDE.recaptchaSiteKey,
             source: "claude"
         };
 

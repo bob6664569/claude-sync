@@ -16,13 +16,14 @@
     "synchronization",
     "file-sync"
   ],
-  "author": "Votre Nom",
+  "author": "Johan <johan@trilogik.net>",
   "license": "MIT",
   "dependencies": {
     "axios": "1.7.4",
     "axios-cookiejar-support": "5.0.2",
     "chokidar": "3.6.0",
     "debug": "4.3.6",
+    "dotenv": "16.4.5",
     "electron-store": "10.0.0",
     "tough-cookie": "4.1.4",
     "uuid": "10.0.0"
@@ -42,19 +43,17 @@
       "output": "dist"
     },
     "mac": {
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "icon": "assets/icons/mac/icon.icns"
     },
     "win": {
-      "target": [
-        "nsis"
-      ]
+      "target": "nsis",
+      "icon": "assets/icons/win/icon.ico"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "Utility"
+      "target": "deb",
+      "category": "Utility",
+      "icon": "assets/icons/png/256x256.png"
     }
   }
 }

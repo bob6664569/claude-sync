@@ -1,13 +1,20 @@
 const { BrowserWindow } = require('electron');
 const path = require('path');
-const { getStore } = require('./store');
 
 let mainWindow;
 let loginWindow;
 let projectSelectionWindow;
+let iconPath;
+
+if (process.platform.startsWith('win')) {
+    iconPath = path.join(process.cwd(), 'assets/icons/win/app.ico');
+} else if (process.platform === 'darwin') {
+    iconPath = path.join(process.cwd(), 'assets/icons/mac/icon.icns');
+} else {
+    iconPath = path.join(process.cwd(), 'assets/icons/png/256x256.png');
+}
 
 function createLoginWindow() {
-    // Close existing login window if it exists
     if (loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.close();
     }
@@ -18,7 +25,8 @@ function createLoginWindow() {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
-        }
+        },
+        icon: iconPath
     });
 
     loginWindow.loadFile(path.join(__dirname, '../renderer/login.html'));
@@ -36,7 +44,8 @@ async function createMainWindow() {
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false
-            }
+            },
+            icon: iconPath
         });
 
         await mainWindow.loadFile(path.join(__dirname, '../renderer/main.html'));
@@ -74,7 +83,8 @@ function createProjectSelectionWindow() {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
-        }
+        },
+        icon: iconPath
     });
 
     projectSelectionWindow.loadFile(path.join(__dirname, '../renderer/project-selection.html'));

@@ -1,3 +1,4 @@
+const path = require('path');
 const { app, BrowserWindow } = require('electron');
 const { setupIpcHandlers } = require('./ipc-handlers');
 const { initStore, getStore } = require('./store');
@@ -54,6 +55,9 @@ async function checkAndHandleSession() {
 
 app.on('ready', () => {
     try {
+        if (process.platform === 'darwin') {
+            app.dock.setIcon(path.join(process.cwd(), 'assets/icons/mac/icon.icns'));
+        }
         initApp().catch(error => {
             console.error('Failed to initialize app:', error);
             app.quit();

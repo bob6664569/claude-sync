@@ -5,7 +5,7 @@ const path = require('path');
 const chokidar = require('chokidar');
 const { getStore, getCurrentProjectId, setCurrentProjectId, getSyncItemsForProject, setSyncItemsForProject } = require('./store');
 const { createMainWindow, createProjectSelectionWindow, closeLoginWindow, getMainWindow } = require('./windows');
-const { shouldIgnore, getDirectoryContents, mergeItems } = require('../utils/file-utils');
+const { shouldIgnore, mergeItems } = require('../utils/file-utils');
 const SyncQueue = require('../utils/SyncQueue');
 
 let handlersSetup = false;
@@ -269,25 +269,54 @@ class IpcHandlerManager {
     }
 
     async processSelectedPaths(filePaths) {
-        return Promise.all(filePaths
-            .filter(filePath => !shouldIgnore(filePath))
-            .map(async (filePath) => {
-                const stats = await fs.stat(filePath);
-                if (stats.isDirectory()) {
-                    return {
-                        name: path.basename(filePath),
-                        path: filePath,
-                        isDirectory: true,
-                        children: getDirectoryContents(filePath)
-                    };
-                } else {
+        return Promise.all(filePaths.map(async (filePath) => {
+            const stats = await fs.stat(filePath);
+            if (stats.isDirectory()) {
+                return {
+                    name: path.basename(filePath),
+                    path: filePath,
+                    isDirectory: true,
+                    children: await this.getDirectoryContents(filePath)
+                };
+            } else {
+                if (!shouldIgnore(filePath)) {
                     return {
                         name: path.basename(filePath),
                         path: filePath,
                         isDirectory: false
                     };
                 }
-            }));
+                return null;
+            }
+        })).then(items => items.filter(item => item !== null));
+    }
+
+    async getDirectoryContents(dir) {
+        const items = await fs.readdir(dir, { withFileTypes: true });
+        return Promise.all(items.map(async (item) => {
+            const fullPath = path.join(dir, item.name);
+            if (shouldIgnore(fullPath)) {
+                return null;
+            }
+            if (item.isDirectory()) {
+                const children = await this.getDirectoryContents(fullPath);
+                if (children.length === 0) {
+                    return null; // Ignore empty directories
+                }
+                return {
+                    name: item.name,
+                    path: fullPath,
+                    isDirectory: true,
+                    children: children
+                };
+            } else {
+                return {
+                    name: item.name,
+                    path: fullPath,
+                    isDirectory: false
+                };
+            }
+        })).then(items => items.filter(item => item !== null));
     }
 
     startFileWatcher(items) {

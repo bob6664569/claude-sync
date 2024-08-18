@@ -267,16 +267,20 @@ class SyncApp {
         removeFromArray(this.syncItems);
     }
 
-    // Handle adding new items
     async handleAddItems() {
         try {
             console.log('Current syncItems before adding:', this.syncItems);
-            const updatedItems = await ipcRenderer.invoke('select-files-and-folders', this.syncItems);
-            console.log('Updated items received:', updatedItems);
-            this.syncItems = updatedItems;
-            this.updateItemTree();
-            await this.saveSyncItems();
-            console.log('SyncItems after update:', this.syncItems);
+            const result = await ipcRenderer.invoke('select-files-and-folders', this.syncItems);
+            console.log('Selection result:', result);
+
+            if (result && Array.isArray(result)) {
+                this.syncItems = result;
+                this.updateItemTree();
+                await this.saveSyncItems();
+                console.log('SyncItems after update:', this.syncItems);
+            } else {
+                console.error('Unexpected result format from file selection');
+            }
         } catch (error) {
             console.error('Error adding items:', error);
             this.addConsoleEntry('error', 'Error adding items: ' + error.message);

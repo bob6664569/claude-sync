@@ -1,6 +1,7 @@
 # Claude Sync
 
 ![GitHub](https://img.shields.io/github/license/bob6664569/claude-sync)
+
 ![assets/capture.png](assets/capture.png)
 
 Claude Sync is a desktop application developed with Electron for synchronizing files with Claude's "Projects" feature. It provides an intuitive user interface for selecting and syncing files and folders with your Claude projects.

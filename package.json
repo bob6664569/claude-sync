@@ -17,7 +17,7 @@
     "file-sync"
   ],
   "author": "Johan <johan@trilogik.net>",
-  "license": "MIT",
+  "license": "WTFPL",
   "dependencies": {
     "axios": "1.7.4",
     "axios-cookiejar-support": "5.0.2",

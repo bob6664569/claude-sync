@@ -42,7 +42,7 @@
         --console-bg: rgb(40, 44, 52);
         --code-block-background: rgb(33, 32, 28);
         --code-block-color: rgba(245, 244, 239, 0.6);
-        --item-tree-bg: white;
+        --item-tree-bg: rgba(57, 57, 55, 0.75);
     }
 }
 
@@ -170,7 +170,7 @@ button:hover {
 
 .folder {
     font-weight: bold;
-    color: var(--primary-color);
+    color: var(--text-color);
 }
 
 .file {

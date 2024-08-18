@@ -1,5 +1,6 @@
 # Claude Sync
 
+![GitHub](https://img.shields.io/github/license/bob6664569/claude-sync)
 ![assets/capture.png](assets/capture.png)
 
 Claude Sync is a desktop application developed with Electron for synchronizing files with Claude's "Projects" feature. It provides an intuitive user interface for selecting and syncing files and folders with your Claude projects.
@@ -94,11 +95,7 @@ Contributions are welcome! To contribute:
 
 ## License
 
-This project is licensed under the [Unlicense](http://unlicense.org/).
-
-This means you can copy, modify, publish, use, compile, sell, or distribute this software, either in its original form or as modified. In other words, do whatever you want with it - there are no restrictions.
-
-For more information, please see the `UNLICENSE` file in this repository or visit [http://unlicense.org/](http://unlicense.org/)
+This project is licensed under the WTFPL (Do What The F*ck You Want To Public License). For more information, see the [LICENSE](LICENSE) file in this repository or visit [http://www.wtfpl.net/](http://www.wtfpl.net/).
 
 ## Contact
 

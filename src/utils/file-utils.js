@@ -1,15 +1,28 @@
 const path = require('path');
 const fs = require('fs');
-const { IGNORE_LIST } = require('./config');
+const { IGNORE_LIST, ALLOWED_EXTENSIONS } = require('./config');
+
 
 function shouldIgnore(filePath) {
     const fileName = path.basename(filePath);
-    return IGNORE_LIST.some(ignoreItem => {
+    const fileExtension = path.extname(filePath).toLowerCase();
+
+    // Check if the file is in the ignore list
+    if (IGNORE_LIST.some(ignoreItem => {
         if (ignoreItem.startsWith('*')) {
             return fileName.endsWith(ignoreItem.slice(1));
         }
         return fileName === ignoreItem;
-    });
+    })) {
+        return true;
+    }
+
+    // Check if the file extension is in the allowed list
+    if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+        return true;
+    }
+
+    return false;
 }
 
 function getDirectoryContents(dir) {

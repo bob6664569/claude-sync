@@ -56,7 +56,7 @@ async function checkAndHandleSession() {
 app.on('ready', () => {
     try {
         if (process.platform === 'darwin') {
-            app.dock.setIcon(path.join(process.cwd(), 'assets/icons/mac/icon.icns'));
+            app.dock.setIcon(path.join(process.cwd(), 'assets/icons/mac/icon.png'));
         }
         initApp().catch(error => {
             console.error('Failed to initialize app:', error);

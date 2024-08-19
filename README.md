@@ -20,7 +20,7 @@ Claude Sync is a desktop application developed with Electron for synchronizing f
 - npm (usually installed with Node.js)
 
 ## Installation
-
+ 
 1. Clone this repository:
    ```
    git clone git@github.com:bob6664569/claude-sync.git
@@ -82,6 +82,35 @@ claude-sync/
 ├── package.json
 ├── README.md
 └── .gitignore
+```
+
+```mermaid
+graph TD
+    A[Main Process] --> B[IPC Handlers]
+    A --> C[Windows Management]
+    A --> D[Store]
+    A --> E[API Client]
+    
+    B --> F[Renderer Process: Login]
+    B --> G[Renderer Process: Main]
+    B --> H[Renderer Process: Project Selection]
+    
+    G --> I[File Watcher]
+    G --> J[Sync Queue]
+    
+    E --> K[Claude API]
+    
+    D --> L[Electron Store]
+    
+    subgraph Utils
+        M[Config]
+        N[File Utils]
+        O[Logger]
+    end
+    
+    G --> Utils
+    B --> Utils
+    E --> Utils
 ```
 
 ## Contributing

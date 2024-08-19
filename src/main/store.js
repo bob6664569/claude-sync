@@ -36,7 +36,7 @@ function getSyncItemsForProject(projectId) {
 function setSyncItemsForProject(projectId, items) {
     const allSyncItems = getStore().get('syncItems', {});
     allSyncItems[projectId] = items;
-    console.log(allSyncItems);
+    console.log('Saving sync items:', projectId, items);
     getStore().set('syncItems', allSyncItems);
 }
 

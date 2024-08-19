@@ -107,12 +107,11 @@ class SyncApp {
         this.domElements.toggleSyncButton.addEventListener('click', () => this.handleToggleSync());
     }
 
-    // Save the current sync items to the store
     async saveSyncItems() {
         try {
             console.log('Saving sync items:', this.syncItems);
             await ipcRenderer.invoke('save-sync-items', this.syncItems);
-            console.log('Sync items saved successfully');
+            this.addConsoleEntry('success', 'Sync items saved successfully');
         } catch (error) {
             console.error('Error saving sync items:', error);
             this.addConsoleEntry('error', 'Error saving sync items: ' + error.message);
@@ -265,22 +264,17 @@ class SyncApp {
         };
 
         removeFromArray(this.syncItems);
+        this.saveSyncItems();
+        ipcRenderer.send('save-sync-items', this.syncItems);
     }
 
     async handleAddItems() {
         try {
-            console.log('Current syncItems before adding:', this.syncItems);
             const result = await ipcRenderer.invoke('select-files-and-folders', this.syncItems);
-            console.log('Selection result:', result);
-
-            if (result && Array.isArray(result)) {
-                this.syncItems = result;
-                this.updateItemTree();
-                await this.saveSyncItems();
-                console.log('SyncItems after update:', this.syncItems);
-            } else {
-                console.error('Unexpected result format from file selection');
-            }
+            console.log('Received updated sync items:', result);
+            this.syncItems = result;
+            this.updateItemTree();
+            await this.saveSyncItems();
         } catch (error) {
             console.error('Error adding items:', error);
             this.addConsoleEntry('error', 'Error adding items: ' + error.message);

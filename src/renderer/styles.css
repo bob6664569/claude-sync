@@ -232,7 +232,7 @@ button:hover {
 .console-entry.add { color: var(--success-color); }
 .console-entry.change { color: #f39c12; }
 .console-entry.delete { color: var(--error-color); }
-.console-entry.info { color: var(--primary-color); }
+.console-entry.info { color: var(--text-color); }
 .console-entry.success { color: var(--success-color); }
 .console-entry.synced { color: var(--success-color); }
 

@@ -145,21 +145,18 @@ class IpcHandlerManager {
     setupFileSelectionHandler() {
         ipcMain.handle('select-files-and-folders', async (_, existingItems) => {
             try {
-                const mainWindow = getMainWindow();
-                if (!mainWindow) {
-                    throw new Error('Main window not found');
-                }
-
-                const result = await dialog.showOpenDialog(mainWindow, {
+                const result = await dialog.showOpenDialog(getMainWindow(), {
                     properties: ['openFile', 'openDirectory', 'multiSelections']
                 });
-
                 if (result.canceled) {
                     return existingItems;
                 } else {
                     const newItems = await this.processSelectedPaths(result.filePaths);
                     const mergedItems = mergeItems(existingItems, newItems);
                     console.log('Merged items:', mergedItems);
+                    const currentProjectId = getCurrentProjectId();
+                    setSyncItemsForProject(currentProjectId, mergedItems);
+                    console.log('Saved sync items for project:', currentProjectId, mergedItems);
                     return mergedItems;
                 }
             } catch (error) {
@@ -366,22 +363,102 @@ class IpcHandlerManager {
         const rootInfo = this.getSyncRootForFile(filePath);
 
         if (!rootInfo) {
-            console.error(`No sync root found for file: ${filePath}`);
+            console.log(`File ${filePath} is not in any sync root, ignoring.`);
             return;
         }
 
         const { syncRoot } = rootInfo;
 
-        this.updateSyncStatus(filePath, 'queued');
-        this.syncQueue.add({ organizationUUID, projectUUID, filePath, syncRoot, eventType });
+        if (!this.isFileIncludedInSyncItems(filePath)) {
+            console.log(`File ${filePath} is not included in sync items, ignoring.`);
+            return;
+        }
+
+        if (eventType === 'unlink' || eventType === 'unlinkDir') {
+            this.handleFileDeletion(organizationUUID, projectUUID, filePath);
+        } else {
+            this.updateSyncStatus(filePath, 'queued');
+            this.syncQueue.add({ organizationUUID, projectUUID, filePath, syncRoot, eventType });
+        }
+    }
+
+    async handleFileDeletion(organizationUUID, projectUUID, filePath) {
+        console.log(`Handling deletion for file: ${filePath}`);
+
+        const mainWindow = getMainWindow();
+        if (mainWindow) {
+            mainWindow.webContents.send('file-change', { type: 'deleting', path: filePath });
+        }
+
+        try {
+            // Get the root information for the file
+            const rootInfo = this.getSyncRootForFile(filePath);
+            if (!rootInfo) {
+                console.log(`File ${filePath} is not in any sync root, ignoring deletion.`);
+                return;
+            }
+
+            const { syncRoot } = rootInfo;
+            const rootFolder = path.basename(syncRoot);
+            const relativeFilePath = path.relative(syncRoot, filePath);
+            const apiFileName = path.join(rootFolder, relativeFilePath).replace(/\\/g, '/');
+
+            // List existing files in the project
+            const existingFiles = await this.apiClient.listProjectFiles(organizationUUID, projectUUID);
+
+            // Find the file to delete
+            const fileToDelete = existingFiles.find(file => file.file_name === apiFileName);
+
+            if (fileToDelete) {
+                // Delete the file on the server
+                await this.apiClient.deleteFile(organizationUUID, projectUUID, fileToDelete.uuid);
+                console.log(`Deleted file ${apiFileName} from server`);
+
+                this.updateSyncStatus(filePath, 'deleted');
+                if (mainWindow) {
+                    mainWindow.webContents.send('file-change', { type: 'deleted', path: filePath });
+                }
+            } else {
+                console.log(`File ${apiFileName} not found on server, no deletion needed`);
+            }
+        } catch (error) {
+            console.error(`Error deleting file ${filePath}:`, error);
+            this.updateSyncStatus(filePath, 'error');
+            if (mainWindow) {
+                mainWindow.webContents.send('sync-error', `Error deleting ${filePath}: ${error.message}`);
+            }
+        }
+    }
+
+    isFileIncludedInSyncItems(filePath) {
+        const currentProjectId = getCurrentProjectId();
+        const syncItems = getSyncItemsForProject(currentProjectId);
+        return this.isFileInItems(filePath, syncItems);
+    }
+
+    isFileInItems(filePath, items) {
+        for (const item of items) {
+            if (!item.isDirectory && item.path === filePath) {
+                return true;
+            }
+            if (item.isDirectory && item.children) {
+                if (this.isFileInItems(filePath, item.children)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     getSyncRootForFile(filePath) {
         const currentProjectId = getCurrentProjectId();
         const syncItems = getSyncItemsForProject(currentProjectId);
 
+        filePath = path.normalize(filePath);
+
         for (const item of syncItems) {
-            if (path.normalize(filePath).startsWith(path.normalize(item.path))) {
+            const itemPath = path.normalize(item.path);
+            if (filePath.startsWith(itemPath)) {
                 return {
                     syncRoot: item.path,
                     rootFolder: path.basename(item.path)
@@ -389,7 +466,6 @@ class IpcHandlerManager {
             }
         }
 
-        console.error(`No sync root found for file: ${filePath}`);
         return null;
     }
 

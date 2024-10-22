@@ -40,7 +40,8 @@ Claude Sync is a desktop application developed with Electron for synchronizing f
 
 Just create a `.env` file in the root of the project and add the necessary environment variables:
 ```
-API_URL=https://api.claude.ai/api/
+API_BASE_URL=https://api.claude.ai/api/
+RECAPTCHA_SITE_KEY=s1t3k3y
 ```
 
 ## Usage

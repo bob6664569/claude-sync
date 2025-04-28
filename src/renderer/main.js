@@ -223,13 +223,13 @@ class SyncApp {
         const isCollapsed = this.collapsedFolders.has(fullPath);
 
         const content = `
+        ${!isIgnored ? '<span class="remove-btn" data-path="' + fullPath + '">☑</span>' : ''}
+        ${isIgnored ? '<span class="ignore-toggle" data-path="' + fullPath + '">☐</span>' : ''}
         <span class="${item.isDirectory ? 'folder' : 'file'} ${isIgnored ? 'ignored' : ''}">
             ${item.isDirectory ? '<span class="expander">' + (isCollapsed ? '▶' : '▼') + '</span>' : ''}
             ${item.name}
-            ${isIgnored ? '<span class="ignore-toggle" data-path="' + fullPath + '">+</span>' : ''}
             ${!isIgnored ? this.getSyncStatusIcon(status) : ''}
-        </span>
-        ${!isIgnored ? '<span class="remove-btn" data-path="' + fullPath + '">✕</span>' : ''}
+        </span>     
     `;
         div.innerHTML = content;
 

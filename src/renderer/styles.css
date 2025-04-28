@@ -177,10 +177,10 @@ button:hover {
     color: var(--text-color);
 }
 
-.remove-btn {
+.remove-btn, .ignore-toggle {
+    font-size: 1.2em;
     margin-left: 5px;
     cursor: pointer;
-    color: var(--error-color);
     transition: color 0.2s ease;
 }
 
@@ -306,16 +306,4 @@ button:hover {
 .tree-item.ignored, .file.ignored, .folder.ignored {
     color: #999;
     opacity: 0.6;
-}
-
-.ignore-toggle {
-    margin-left: 5px;
-    cursor: pointer;
-    color: #999;
-    font-weight: bold;
-    transition: color 0.2s ease;
-}
-
-.ignore-toggle:hover {
-    color: var(--success-color);
 }

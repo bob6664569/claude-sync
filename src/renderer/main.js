@@ -21,6 +21,25 @@ class SyncApp {
         this.setupIpcListeners();
     }
 
+    createContextMenu(item) {
+        const menu = Menu.buildFromTemplate([
+            {
+                label: 'Supprimer',
+                click: () => {
+                    this.removeRootItem(item.path);
+                }
+            }
+        ]);
+        return menu;
+    }
+
+    removeRootItem(pathToRemove) {
+        this.syncItems = this.syncItems.filter(item => item.path !== pathToRemove);
+        this.updateItemTree();
+        this.saveSyncItems();
+        this.addConsoleEntry('info', `Dossier racine supprimé: ${pathToRemove}`);
+    }
+
     updateItemStatus(filePath, status) {
         const item = this.domElements.itemTree.querySelector(`[data-path="${filePath}"]`);
         if (item) {
@@ -209,6 +228,7 @@ class SyncApp {
     createTreeItem(item, parentPath = '', parentIgnored = false) {
         const fullPath = parentPath ? `${parentPath}${path.sep}${item.name}` : item.path;
         const isIgnored = parentIgnored || item.ignored;
+        const isRootItem = !parentPath;
 
         const div = document.createElement('div');
         div.className = `tree-item ${isIgnored ? 'ignored' : ''}`;
@@ -222,6 +242,9 @@ class SyncApp {
 
         const isCollapsed = this.collapsedFolders.has(fullPath);
 
+        const rootDeleteButton = isRootItem ?
+            `<span class="root-delete-btn" title="Supprimer cet élément" data-path="${fullPath}">🗑️</span>` : '';
+
         const content = `
         ${!isIgnored ? '<span class="remove-btn" data-path="' + fullPath + '">☑</span>' : ''}
         ${isIgnored ? '<span class="ignore-toggle" data-path="' + fullPath + '">☐</span>' : ''}
@@ -229,6 +252,7 @@ class SyncApp {
             ${item.isDirectory ? '<span class="expander">' + (isCollapsed ? '▶' : '▼') + '</span>' : ''}
             ${item.name}
             ${!isIgnored ? this.getSyncStatusIcon(status) : ''}
+            ${rootDeleteButton}
         </span>     
     `;
         div.innerHTML = content;
@@ -354,28 +378,19 @@ class SyncApp {
                 this.saveSyncItems();
             });
         });
-    }
 
-    // Remove an item from syncItems by its path
-    removeItemByPath(pathToRemove) {
-        const removeFromArray = (items) => {
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].path === pathToRemove) {
-                    items.splice(i, 1);
-                    return true;
-                }
-                if (items[i].isDirectory && items[i].children) {
-                    if (removeFromArray(items[i].children)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
+        this.domElements.itemTree.querySelectorAll('.root-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pathToDelete = e.target.getAttribute('data-path');
 
-        removeFromArray(this.syncItems);
-        this.saveSyncItems();
-        ipcRenderer.send('save-sync-items', this.syncItems);
+                // Confirmation de suppression
+                const result = await ipcRenderer.invoke('show-context-menu', pathToDelete);
+                if (result.confirmed) {
+                    this.removeRootItem(pathToDelete);
+                }
+            });
+        });
     }
 
     async handleAddItems() {
@@ -420,6 +435,18 @@ class SyncApp {
             }
             return acc;
         }, []);
+    }
+
+    async showContextMenu(itemPath) {
+        try {
+            const result = await ipcRenderer.invoke('show-context-menu', itemPath);
+            if (result.confirmed) {
+                this.removeRootItem(itemPath);
+            }
+        } catch (error) {
+            console.error('Error showing context menu:', error);
+            this.addConsoleEntry('error', 'Error showing context menu: ' + error.message);
+        }
     }
 
     addConsoleEntry(type, message) {

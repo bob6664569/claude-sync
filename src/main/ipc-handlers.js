@@ -50,6 +50,19 @@ class IpcHandlerManager {
             return { success: true };
         });
 
+        ipcMain.handle('show-context-menu', async (event, itemPath) => {
+            const result = await dialog.showMessageBox(getMainWindow(), {
+                type: 'question',
+                buttons: ['Supprimer', 'Annuler'],
+                defaultId: 1,
+                title: 'Supprimer l\'élément',
+                message: `Voulez-vous supprimer ${path.basename(itemPath)} de la liste de synchronisation ?`,
+                detail: 'Cela n\'affectera pas les fichiers sur votre disque.'
+            });
+
+            return { confirmed: result.response === 0 };
+        });
+
         ipcMain.handle('get-current-project', () => {
             return getCurrentProjectId();
         });

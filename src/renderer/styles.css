@@ -307,3 +307,14 @@ button:hover {
     color: #999;
     opacity: 0.6;
 }
+
+.root-delete-btn {
+    margin-right: 5px;
+    cursor: pointer;
+    color: #e74c3c;
+    transition: opacity 0.2s ease;
+}
+
+.root-delete-btn:hover {
+    opacity: 0.8;
+}
